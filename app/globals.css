@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'nprogress/nprogress.css'; /* Added for NProgress */
 
 :root {
   --background: #ffffff;

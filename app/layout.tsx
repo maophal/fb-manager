@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
+import Navbar from "../components/Navbar"; // Import the Navbar component
+import Footer from "../components/Footer"; // Import the Footer component
+import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
+import ProgressBar from '../components/ProgressBar'; // Import ProgressBar
+import AppContent from '../components/AppContent'; // Import AppContent
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const geistSans = GeistSans;
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistMono = GeistMono;
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -27,7 +27,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>
+          <ProgressBar />
+          <AppContent>{children}</AppContent> {/* Wrap content with AppContent */}
+        </AuthProvider>
       </body>
     </html>
   );
