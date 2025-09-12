@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db'; // Reusable DB connection
+import type { PoolClient } from 'pg'; // Import PoolClient for type hinting
 
 import { NextRequest } from 'next/server'; // Import NextRequest
 
 export async function POST(request: NextRequest) {
-  let client: Client | null = null; // Initialize client as nullable
+  let client: PoolClient | null = null; // Initialize client as nullable
   try {
     const { userId, planId } = await request.json();
 

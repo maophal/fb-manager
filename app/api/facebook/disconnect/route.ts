@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db'; // Reusable DB connection
-import { Client } from 'pg'; // Import Client for type hinting
+import type { PoolClient } from 'pg'; // Import Client for type hinting
 import { NextRequest } from 'next/server'; // Import NextRequest
 
 export async function POST(request: NextRequest) { // Using POST for disconnect as it modifies data
-  let client: Client | null = null;
+  let client: PoolClient | null = null;
   try {
     client = await pool.connect();
 

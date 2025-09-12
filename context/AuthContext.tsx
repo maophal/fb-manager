@@ -8,6 +8,7 @@ interface User {
   name: string;
   email: string;
   plan_id: string | null;
+  created_at?: string;
 }
 
 // Define action types

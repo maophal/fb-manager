@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db'; // Reusable DB connection
-import { Client } from 'pg'; // Import Client for type hinting
+import type { PoolClient } from 'pg'; // Import PoolClient for type hinting
 
 // IMPORTANT: Replace with your actual Facebook App ID and Secret
 // These should ideally be loaded from environment variables for security.
@@ -10,7 +10,7 @@ const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || 'YOUR_FACEBOOK_AP
 const FACEBOOK_REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || 'http://localhost:3000/api/facebook/callback';
 
 export async function GET(request: NextRequest) {
-  let client: Client | null = null;
+  let client: PoolClient | null = null;
   try {
     client = await pool.connect();
 

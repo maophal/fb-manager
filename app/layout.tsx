@@ -71,7 +71,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <ThemeProvider>
-            <LoadingProvider className="flex flex-col min-h-screen">
+            <LoadingProvider>
               <ProgressLoader />
               <Navbar />
               <MainContent>

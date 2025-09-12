@@ -162,7 +162,7 @@ export default function PostImagePage() {
     const urls = currentImageUrlInput.split('\n').filter(url => url.trim() !== '');
     if (urls.length > 0) {
       setIsGettingImage(true);
-      const newImagePreviews = [];
+      const newImagePreviews: { id: string; url: string; type: 'url' | 'file'; file?: File }[] = [];
       for (const url of urls) {
         let finalImageUrl = url.trim();
         if (finalImageUrl.includes('pinterest.com/pin/')) {
@@ -577,7 +577,7 @@ export default function PostImagePage() {
                   selected={scheduledDate}
                   onChange={(date: Date | null) => setScheduledDate(date)}
                   showTimeSelect
-                  showMinutes
+                  
                   dateFormat="Pp"
                   minDate={moment().toDate()}
                   minTime={scheduledDate && moment(scheduledDate).isSame(moment(), 'day') ? moment().add(10, 'minutes').toDate() : moment().startOf('day').toDate()}

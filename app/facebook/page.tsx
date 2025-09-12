@@ -72,7 +72,7 @@ export default function FacebookPage() {
     }
 
     if (user && user.id) {
-      fetchConnectedAccounts(user.id);
+      fetchConnectedAccounts(String(user.id));
     }
   }, [isLoggedIn, user, fetchConnectedAccounts, router]);
 
@@ -85,13 +85,13 @@ export default function FacebookPage() {
       const newSearchParams = new URLSearchParams(searchParams.toString());
       newSearchParams.delete('status');
       newSearchParams.delete('message');
-      router.replace(`/facebook?${newSearchParams.toString()}`, undefined, { shallow: true });
+      router.replace(`/facebook?${newSearchParams.toString()}`);
     } else if (status === 'error') {
       setError(message?.replace(/_/g, ' ') || 'Failed to connect Facebook account.');
       const newSearchParams = new URLSearchParams(searchParams.toString());
       newSearchParams.delete('status');
       newSearchParams.delete('message');
-      router.replace(`/facebook?${newSearchParams.toString()}`, undefined, { shallow: true });
+      router.replace(`/facebook?${newSearchParams.toString()}`);
     }
   }, [router, searchParams]);
 
@@ -147,7 +147,7 @@ export default function FacebookPage() {
       const data = await response.json();
       if (response.ok) {
         setSuccessMessage(data.message || 'Facebook page disconnected successfully!');
-        fetchConnectedAccounts(); // Re-fetch all accounts and pages
+        fetchConnectedAccounts(String(user.id)); // Re-fetch all accounts and pages
       } else {
         setError(data.message || 'Failed to disconnect page.');
       }

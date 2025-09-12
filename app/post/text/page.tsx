@@ -350,7 +350,7 @@ export default function PostTextPage() {
                   selected={scheduledDate}
                   onChange={(date: Date | null) => setScheduledDate(date)}
                   showTimeSelect
-                  showMinutes
+                  
                   dateFormat="Pp"
                   minDate={moment().toDate()} // Only allow scheduling in the future
                   minTime={scheduledDate && moment(scheduledDate).isSame(moment(), 'day') ? moment().add(10, 'minutes').toDate() : moment().startOf('day').toDate()} // Lock previous times only for today's date

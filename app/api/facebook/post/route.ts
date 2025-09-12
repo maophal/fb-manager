@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import pool from '@/lib/db'; // Reusable DB connection
-import { Client } from 'pg'; // Import Client for type hinting
+import type { PoolClient } from 'pg'; // Import Client for type hinting
 
 export async function POST(request: NextRequest) {
   console.log('POST /api/facebook/post received request.');
-  let client: Client | null = null;
+  let client: PoolClient | null = null;
   try {
     client = await pool.connect();
     const { pageId, message, caption, attachedMedia, scheduledPublishTime } = await request.json();
