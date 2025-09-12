@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     console.log('User logged in:', user.email);
 
     // Return user details (excluding hashed password)
-    const { password: hashedPassword, ...userData } = user;
+    const { password, ...userData } = user;
     return NextResponse.json({ message: 'Login successful!', user: userData }, { status: 200 });
   } catch (error) {
     console.error('Login error:', error);

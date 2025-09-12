@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Spinner from '../../components/Spinner'; // Keep Spinner import for now, might be removed later if not used on this page
 
 export default function PaymentPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, setHasPickedPlan } = useAuth();
+  const { user } = useAuth();
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 

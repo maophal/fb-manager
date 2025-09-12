@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const htmlContent = response.data;
     const $ = cheerio.load(htmlContent);
 
-    let directImageUrl = $('meta[property="og:image"]').attr('content');
+    const directImageUrl = $('meta[property="og:image"]').attr('content');
 
     if (directImageUrl) {
       console.log('Extracted direct image URL from og:image:', directImageUrl);

@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false); // New state for copy feedback
   const router = useRouter();
-  const { login, hasPickedPlan } = useAuth();
+  const { login } = useAuth();
 
   const handleCopyCredentials = () => {
     const sampleEmail = 'tt@gmail.com';

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import Spinner from '../../../components/Spinner';
 import Link from 'next/link';
@@ -11,7 +12,6 @@ import FacebookPageSelector from '../../../components/FacebookPageSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
-import { MdDoneOutline } from 'react-icons/md'; // Assuming this icon is still desired
 import toast from 'react-hot-toast';
 
 interface FacebookPage {
@@ -151,7 +151,7 @@ export default function PostImagePage() {
     const newImagePreviews = validFiles.map(file => ({
       id: 'upload-' + Date.now() + '-' + Math.random(),
       url: URL.createObjectURL(file),
-      type: 'file' as 'file',
+      type: 'file' as const,
       file: file,
     }));
     setImagePreviews(prev => [...prev, ...newImagePreviews]);
@@ -181,7 +181,7 @@ export default function PostImagePage() {
               toast.error(`Could not extract direct image URL from Pinterest for: ${finalImageUrl}`);
               continue;
             }
-          } catch (err) {
+          } catch (_: unknown) {
             toast.error(`Failed to process Pinterest URL: ${finalImageUrl}`);
             continue;
           }
@@ -515,16 +515,15 @@ export default function PostImagePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {imagePreviews.map((img) => (
                     <div key={img.id} className="relative group">
-                      <img
-                        src={img.url}
-                        alt="Preview"
-                        className="w-full h-24 object-cover rounded-md shadow-md"
-                        onError={(e) => {
-                          e.currentTarget.src = '/file.svg'; // Fallback to a generic image icon
-                          e.currentTarget.alt = 'Image not found or failed to load';
-                          e.currentTarget.className = 'w-full h-24 object-contain rounded-md shadow-md bg-gray-200 p-4'; // Adjust styling for fallback
-                        }}
-                      />
+                      <div className="relative w-full h-24">
+                        <Image
+                          src={img.url}
+                          alt="Preview"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover rounded-md shadow-md"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(img.id)}

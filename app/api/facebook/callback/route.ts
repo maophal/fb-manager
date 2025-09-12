@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
     }
 
     const userAccessToken = tokenData.access_token;
-    const expiresIn = tokenData.expires_in; // Short-lived token expiration
 
     // 2. Get User's Profile (ID, Name, Email)
     const userProfileUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}me?fields=id,name,email&access_token=${userAccessToken}`;
@@ -56,7 +55,6 @@ export async function GET(request: NextRequest) {
 
     const facebookUserId = userProfileData.id;
     const facebookUserName = userProfileData.name;
-    const facebookUserEmail = userProfileData.email;
 
     // 3. Get User's Managed Pages and their Page Access Tokens
     const pagesUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}me/accounts?access_token=${userAccessToken}`;

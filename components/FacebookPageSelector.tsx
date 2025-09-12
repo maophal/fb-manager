@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { MdDoneOutline } from 'react-icons/md'; // Import the MdDoneOutline icon
 
 interface FacebookPage {
@@ -71,7 +72,13 @@ const FacebookPageSelector: React.FC<FacebookPageSelectorProps> = ({
                   disabled={disabled}
                 />
                 {/* Placeholder for page logo - In a real app, you'd fetch this */}
-                <img src={page.page_picture_url || "/file.svg"} alt="Page Logo" className="w-8 h-8 rounded-full mr-2 object-cover" />
+                <Image
+                  src={page.page_picture_url || "/file.svg"}
+                  alt="Page Logo"
+                  width={32}
+                  height={32}
+                  className="rounded-full mr-2 object-cover"
+                />
                 <label htmlFor={`page-${page.page_id}`} className="text-gray-800 font-medium cursor-pointer">
                   {page.page_name} <span className="text-sm text-gray-500 ml-1">({page.page_id})</span>
                 </label>

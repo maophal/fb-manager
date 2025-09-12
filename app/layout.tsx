@@ -1,6 +1,5 @@
 'use client';
 
-import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
@@ -11,7 +10,6 @@ import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthPro
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import Spinner from '../components/Spinner';
 import MainContent from '../components/MainContent';
 import ProgressBar from '../components/ProgressBar';
 
