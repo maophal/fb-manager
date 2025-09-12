@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Exchange code for User Access Token
-    const tokenExchangeUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${FACEBOOK_REDIRECT_URI}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`;
+    const tokenExchangeUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${FACEBOOK_REDIRECT_URI}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`;
     const tokenResponse = await fetch(tokenExchangeUrl);
     const tokenData = await tokenResponse.json();
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const expiresIn = tokenData.expires_in; // Short-lived token expiration
 
     // 2. Get User's Profile (ID, Name, Email)
-    const userProfileUrl = `https://graph.facebook.com/v18.0/me?fields=id,name,email&access_token=${userAccessToken}`;
+    const userProfileUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}me?fields=id,name,email&access_token=${userAccessToken}`;
     const userProfileResponse = await fetch(userProfileUrl);
     const userProfileData = await userProfileResponse.json();
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const facebookUserEmail = userProfileData.email;
 
     // 3. Get User's Managed Pages and their Page Access Tokens
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${userAccessToken}`;
+    const pagesUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}me/accounts?access_token=${userAccessToken}`;
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
 
@@ -78,16 +78,28 @@ export async function GET(request: NextRequest) {
       const pageName = page.name;
       const pageAccessToken = page.access_token; // This is the page-specific token
 
+      let pagePictureUrl = '';
+      try {
+        const pagePictureResponse = await fetch(`${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}${pageId}/picture?redirect=0&access_token=${pageAccessToken}`);
+        const pagePictureData = await pagePictureResponse.json();
+        if (pagePictureData.data && pagePictureData.data.url) {
+          pagePictureUrl = pagePictureData.data.url;
+        }
+      } catch (pictureError) {
+        console.error(`Failed to fetch picture for page ${pageId}:`, pictureError);
+        // Continue without picture if fetching fails
+      }
+
       const checkPageQuery = 'SELECT * FROM facebook_pages WHERE user_id = $1 AND page_id = $2';
       const pageExists = await client.query(checkPageQuery, [currentAppUserId, pageId]);
 
       if (pageExists.rows.length === 0) {
-        const insertPageQuery = 'INSERT INTO facebook_pages (user_id, page_id, page_name, facebook_user_id, facebook_user_name, page_access_token) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, page_id, page_name, facebook_user_id, facebook_user_name';
-        const newPage = await client.query(insertPageQuery, [currentAppUserId, pageId, pageName, facebookUserId, facebookUserName, pageAccessToken]);
+        const insertPageQuery = 'INSERT INTO facebook_pages (user_id, page_id, page_name, facebook_user_id, facebook_user_name, page_access_token, page_picture_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, page_id, page_name, facebook_user_id, facebook_user_name, page_picture_url';
+        const newPage = await client.query(insertPageQuery, [currentAppUserId, pageId, pageName, facebookUserId, facebookUserName, pageAccessToken, pagePictureUrl]);
         connectedPages.push(newPage.rows[0]);
       } else {
-        const updatePageQuery = 'UPDATE facebook_pages SET facebook_user_name = $1, page_access_token = $2 WHERE user_id = $3 AND page_id = $4 RETURNING id, page_id, page_name, facebook_user_id, facebook_user_name';
-        const updatedPage = await client.query(updatePageQuery, [facebookUserName, pageAccessToken, currentAppUserId, pageId]);
+        const updatePageQuery = 'UPDATE facebook_pages SET facebook_user_name = $1, page_access_token = $2, page_picture_url = $3 WHERE user_id = $4 AND page_id = $5 RETURNING id, page_id, page_name, facebook_user_id, facebook_user_name, page_picture_url';
+        const updatedPage = await client.query(updatePageQuery, [facebookUserName, pageAccessToken, pagePictureUrl, currentAppUserId, pageId]);
         connectedPages.push(updatedPage.rows[0]);
       }
     }

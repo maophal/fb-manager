@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Spinner from '../../../components/Spinner'; // Adjust path as needed
 import Link from 'next/link'; // Import Link
+import BackButton from '../../../components/BackButton'; // Import BackButton
+import FacebookAccountSelector from '../../../components/FacebookAccountSelector';
+import FacebookPageSelector from '../../../components/FacebookPageSelector';
 
 interface FacebookPage {
   id: number; // Database ID of the connected page entry
   page_id: string; // Facebook's ID for the page
   page_name: string;
+  page_picture_url?: string; // Optional: URL to the page's profile picture
 }
 
 interface ConnectedFacebookAccount {
@@ -24,16 +28,22 @@ export default function PostTextPage() {
 
   const [postCaption, setPostCaption] = useState('');
   const [postContent, setPostContent] = useState('');
-  const [selectedFacebookAccountId, setSelectedFacebookAccountId] = useState<string | null>(null);
-  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
-  const [allConnectedAccounts, setAllConnectedAccounts] = useState<ConnectedFacebookAccount[]>([]);
-  const [availablePagesForSelectedAccount, setAvailablePagesForSelectedAccount] = useState<FacebookPage[]>([]);
+  const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
+  const [postInterval, setPostInterval] = useState<number>(5); // New state for post interval
+  const [countdown, setCountdown] = useState<number>(0); // New state for countdown
+  const [isCountingDown, setIsCountingDown] = useState<boolean>(false); // New state for countdown status
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [postOption, setPostOption] = useState<'now' | 'schedule'>('now'); // 'now' or 'schedule'
 
+  // New state for managing connected accounts and selected account
+  const [allConnectedAccounts, setAllConnectedAccounts] = useState<ConnectedFacebookAccount[]>([]);
+  const [selectedFacebookAccountId, setSelectedFacebookAccountId] = useState<string | null>(null);
+  const [availablePagesForSelectedAccount, setAvailablePagesForSelectedAccount] = useState<FacebookPage[]>([]);
+
+  // Effect to fetch connected accounts and pages
   useEffect(() => {
     if (!isLoggedIn) {
       router.push('/login');
@@ -54,7 +64,6 @@ export default function PostTextPage() {
         if (response.ok) {
           setAllConnectedAccounts(data.accounts);
           if (data.accounts.length > 0) {
-            // Set default selected account to the first one
             setSelectedFacebookAccountId(data.accounts[0].facebook_user_id);
           }
         } else {
@@ -80,18 +89,15 @@ export default function PostTextPage() {
       );
       if (selectedAccount) {
         setAvailablePagesForSelectedAccount(selectedAccount.pages);
-        if (selectedAccount.pages.length > 0) {
-          setSelectedPageId(selectedAccount.pages[0].page_id); // Select first page of the chosen account
-        } else {
-          setSelectedPageId(null);
-        }
+        // Reset selected pages when account changes
+        setSelectedPageIds([]);
       } else {
         setAvailablePagesForSelectedAccount([]);
-        setSelectedPageId(null);
+        setSelectedPageIds([]);
       }
     } else {
       setAvailablePagesForSelectedAccount([]);
-      setSelectedPageId(null);
+      setSelectedPageIds([]);
     }
   }, [selectedFacebookAccountId, allConnectedAccounts]);
 
@@ -99,40 +105,76 @@ export default function PostTextPage() {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setCountdown(0); // Reset countdown
+    setIsCountingDown(false); // Reset counting down state
 
     if (!postContent.trim() && !postCaption.trim()) {
       setError('Post content or caption cannot be empty.');
       return;
     }
-    if (!selectedPageId) {
-      setError('Please select a Facebook page to post to.');
+    if (selectedPageIds.length === 0) {
+      setError('Please select at least one Facebook page to post to.');
       return;
     }
 
-    setPosting(true);
-    try {
-      const response = await fetch('/api/facebook/post', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pageId: selectedPageId, message: postContent, caption: postCaption }),
-      });
+    const postResults: { pageId: string; success: boolean; message?: string; postId?: string }[] = [];
 
-      const data = await response.json();
+    for (let i = 0; i < selectedPageIds.length; i++) {
+      const pageId = selectedPageIds[i];
+      try {
+        setPosting(true); // Set true before each fetch
+        const response = await fetch('/api/facebook/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ pageId, message: postContent, caption: postCaption }),
+        });
 
-      if (response.ok) {
-        setSuccessMessage('Post successful! Post ID: ' + data.postId);
-        setPostContent(''); // Clear content after successful post
-        setPostCaption(''); // Clear caption
-      } else {
-        setError(data.message || 'Failed to post content.');
+        const data = await response.json();
+        setPosting(false); // Set false after fetch returns
+
+        if (response.ok) {
+          postResults.push({ pageId, success: true, postId: data.postId });
+          setSuccessMessage(`Posted to page ${pageId}! Post ID: ${data.postId}`);
+        } else {
+          postResults.push({ pageId, success: false, message: data.message || 'Failed to post.' });
+          setError(`Failed to post to page ${pageId}: ${data.message || 'Unknown error'}`);
+        }
+      } catch (err: any) {
+        setPosting(false); // Set false on error too
+        postResults.push({ pageId, success: false, message: err.message || 'An unexpected error occurred.' });
+        setError(`Error posting to page ${pageId}: ${err.message || 'Unknown error'}`);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred during posting.');
-    } finally {
-      setPosting(false);
+
+      // Introduce delay if interval is specified and it's not the last page
+      if (postInterval > 0 && i < selectedPageIds.length - 1) {
+        setIsCountingDown(true); // Start counting down
+        setCountdown(postInterval);
+        let timer = postInterval;
+        while (timer > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          timer--;
+          setCountdown(timer);
+        }
+        setCountdown(0); // Clear countdown after interval
+        setIsCountingDown(false); // Stop counting down
+      }
     }
+
+    // setPosting(false); // Removed from here
+    // Optionally, display a summary of all posts
+    const successfulPosts = postResults.filter(res => res.success).length;
+    const failedPosts = postResults.length - successfulPosts;
+    if (successfulPosts > 0 && failedPosts === 0) {
+      setSuccessMessage(`Successfully posted to all ${successfulPosts} selected pages!`);
+    } else if (successfulPosts > 0 && failedPosts > 0) {
+      setSuccessMessage(`Posted to ${successfulPosts} pages. ${failedPosts} pages failed.`);
+    } else {
+      setError('No posts were successful.');
+    }
+    setPostContent(''); // Clear content after successful post
+    setPostCaption(''); // Clear caption
   };
 
   if (loading) {
@@ -156,6 +198,7 @@ export default function PostTextPage() {
 
   return (
     <div className="container mx-auto p-8">
+      <BackButton className="mb-4" />
       <h1 className="text-3xl font-bold mb-6">Post Text to Facebook</h1>
 
       {error && (
@@ -169,46 +212,35 @@ export default function PostTextPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-        {/* Select Facebook Account */}
-        <div className="mb-4">
-          <label htmlFor="facebookAccountSelect" className="block text-gray-700 text-sm font-bold mb-2">Select Facebook Account:</label>
-          <select
-            id="facebookAccountSelect"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            value={selectedFacebookAccountId || ''}
-            onChange={(e) => setSelectedFacebookAccountId(e.target.value)}
-            required
-          >
-            {allConnectedAccounts.map((account) => (
-              <option key={account.facebook_user_id} value={account.facebook_user_id}>
-                {account.facebook_user_name}
-              </option>
-            ))}
-          </select>
-        </div>
+      
 
-        {/* Select Page */}
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
+        <FacebookAccountSelector
+          allConnectedAccounts={allConnectedAccounts}
+          selectedFacebookAccountId={selectedFacebookAccountId}
+          onSelectAccount={setSelectedFacebookAccountId}
+          loading={loading}
+        />
+
+        <FacebookPageSelector
+          availablePages={availablePagesForSelectedAccount}
+          selectedPageIds={selectedPageIds}
+          onSelectPages={setSelectedPageIds}
+          disabled={!selectedFacebookAccountId}
+        />
+
+        {/* Post Interval */}
         <div className="mb-4">
-          <label htmlFor="pageSelect" className="block text-gray-700 text-sm font-bold mb-2">Select Page:</label>
-          <select
-            id="pageSelect"
+          <label htmlFor="postInterval" className="block text-gray-700 text-sm font-bold mb-2">Interval between posts (seconds):</label>
+          <input
+            type="number"
+            id="postInterval"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            value={selectedPageId || ''}
-            onChange={(e) => setSelectedPageId(e.target.value)}
-            required
-            disabled={availablePagesForSelectedAccount.length === 0}
-          >
-            {availablePagesForSelectedAccount.length > 0 ? (
-              availablePagesForSelectedAccount.map((page) => (
-                <option key={page.id} value={page.page_id}>
-                  {page.page_name} ({page.page_id})
-                </option>
-              ))
-            ) : (
-              <option value="">No pages available for this account</option>
-            )}
-          </select>
+            placeholder="0 for no interval"
+            value={postInterval}
+            onChange={(e) => setPostInterval(Number(e.target.value))}
+            min="0"
+          />
         </div>
 
         {/* Caption Box */}
@@ -270,13 +302,18 @@ export default function PostTextPage() {
 
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out w-full"
-          disabled={posting}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out w-full cursor-pointer"
+          disabled={posting || isCountingDown}
         >
           {posting ? (
             <span className="flex items-center justify-center">
               <Spinner className="h-5 w-5 text-white" />
               Posting...
+            </span>
+          ) : isCountingDown ? (
+            <span className="flex items-center justify-center">
+              <Spinner className="h-5 w-5 text-white" />
+              Waiting for next post... {countdown}
             </span>
           ) : (
             'Post to Facebook'

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   // We'll encode the userId into the state parameter
   const state = userId ? `userId=${userId}` : ''; // Simple encoding for simulation
 
-  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${FACEBOOK_REDIRECT_URI}&scope=${scope}&response_type=code&state=${state}`;
+  const authUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL}dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${FACEBOOK_REDIRECT_URI}&scope=${scope}&response_type=code&state=${state}`;
 
   return NextResponse.json({ authUrl }, { status: 200 });
 }

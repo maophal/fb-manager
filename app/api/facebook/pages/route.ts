@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
         fp.page_id,
         fp.page_name,
         fp.facebook_user_id,
-        fp.facebook_user_name
+        fp.facebook_user_name,
+        fp.page_picture_url
       FROM
         facebook_pages fp
       WHERE
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       id: number;
       page_id: string;
       page_name: string;
+      page_picture_url?: string; // Add optional page_picture_url
     }
     const groupedAccounts: { [key: string]: { facebook_user_id: string; facebook_user_name: string; pages: Page[] } } = {};
 
@@ -52,7 +54,8 @@ export async function GET(request: NextRequest) {
       groupedAccounts[row.facebook_user_id].pages.push({
         id: row.page_db_id,
         page_id: row.page_id,
-        page_name: row.page_name
+        page_name: row.page_name,
+        page_picture_url: row.page_picture_url // Add page_picture_url
       });
     });
 
