@@ -8,8 +8,8 @@ export async function POST(request: NextRequest) {
   let client: Client | null = null;
   try {
     client = await pool.connect();
-    const { pageId, message, caption } = await request.json();
-    console.log('Request body:', { pageId, message, caption });
+    const { pageId, message, caption, scheduledPublishTime } = await request.json();
+    console.log('Request body:', { pageId, message, caption, scheduledPublishTime });
 
     if (!pageId || !message) {
       return NextResponse.json({ message: 'Page ID and message are required.' }, { status: 400 });
@@ -31,17 +31,40 @@ export async function POST(request: NextRequest) {
     // Post the message to Facebook Graph API
     const facebookApiUrl = `${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}${pageId}/feed`;
     console.log(`Making Facebook Graph API call to: ${facebookApiUrl}`);
-    console.log('Request payload:', { message, caption });
+
+    const postBody: {
+      message: string;
+      caption?: string;
+      access_token: string;
+      scheduled_publish_time?: number;
+      published?: boolean;
+    } = {
+      message: message,
+      access_token: pageAccessToken,
+    };
+
+    if (caption) {
+      postBody.caption = caption;
+    }
+
+    if (scheduledPublishTime) {
+      // Facebook Graph API requires scheduled_publish_time as a Unix timestamp (seconds since epoch)
+      postBody.scheduled_publish_time = Math.floor(new Date(scheduledPublishTime).getTime() / 1000);
+      postBody.published = false; // Must be false for scheduled posts
+      console.log(`Scheduling post for: ${new Date(scheduledPublishTime).toISOString()} (Unix: ${postBody.scheduled_publish_time})`);
+      // IMPORTANT: For true scheduling, you would typically save this post to a database
+      // with its scheduled time and use a background job (e.g., cron, message queue)
+      // to publish it at the specified time. This API endpoint only sets the
+      // scheduled_publish_time parameter for Facebook's API.
+    }
+
+    console.log('Request payload:', postBody);
     const postResponse = await fetch(facebookApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message: message,
-        caption: caption, // Include caption
-        access_token: pageAccessToken,
-      }),
+      body: JSON.stringify(postBody),
     });
 
     const postData = await postResponse.json();

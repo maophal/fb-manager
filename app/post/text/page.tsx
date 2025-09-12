@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Spinner from '../../../components/Spinner'; // Adjust path as needed
@@ -8,6 +8,9 @@ import Link from 'next/link'; // Import Link
 import BackButton from '../../../components/BackButton'; // Import BackButton
 import FacebookAccountSelector from '../../../components/FacebookAccountSelector';
 import FacebookPageSelector from '../../../components/FacebookPageSelector';
+import DatePicker from 'react-datepicker'; // Import DatePicker
+import 'react-datepicker/dist/react-datepicker.css'; // Import DatePicker CSS
+import moment from 'moment'; // Import moment.js
 
 interface FacebookPage {
   id: number; // Database ID of the connected page entry
@@ -37,6 +40,16 @@ export default function PostTextPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [postOption, setPostOption] = useState<'now' | 'schedule'>('now'); // 'now' or 'schedule'
+  const [publishedPageIds, setPublishedPageIds] = useState<string[]>([]); // New state for successfully posted page IDs
+  const [scheduledDate, setScheduledDate] = useState<Date | null>(moment().add(10, 'minutes').toDate()); // New state for scheduled date, defaults to 10 minutes from now using moment
+  const datePickerRef = useRef<DatePicker>(null); // Create a ref for the DatePicker
+
+  // Effect to open DatePicker when schedule option is selected
+  useEffect(() => {
+    if (postOption === 'schedule' && datePickerRef.current) {
+      datePickerRef.current.setOpen(true);
+    }
+  }, [postOption]);
 
   // New state for managing connected accounts and selected account
   const [allConnectedAccounts, setAllConnectedAccounts] = useState<ConnectedFacebookAccount[]>([]);
@@ -117,6 +130,16 @@ export default function PostTextPage() {
       return;
     }
 
+    if (postOption === 'schedule' && !scheduledDate) {
+      setError('Please select a date and time for the scheduled post.');
+      return;
+    }
+
+    if (postOption === 'schedule' && scheduledDate && scheduledDate < new Date()) {
+      setError('Scheduled date and time must be in the future.');
+      return;
+    }
+
     const postResults: { pageId: string; success: boolean; message?: string; postId?: string }[] = [];
 
     for (let i = 0; i < selectedPageIds.length; i++) {
@@ -128,7 +151,12 @@ export default function PostTextPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ pageId, message: postContent, caption: postCaption }),
+          body: JSON.stringify({
+            pageId,
+            message: postContent,
+            caption: postCaption,
+            scheduledPublishTime: postOption === 'schedule' && scheduledDate ? scheduledDate.toISOString() : undefined,
+          }),
         });
 
         const data = await response.json();
@@ -137,14 +165,19 @@ export default function PostTextPage() {
         if (response.ok) {
           postResults.push({ pageId, success: true, postId: data.postId });
           setSuccessMessage(`Posted to page ${pageId}! Post ID: ${data.postId}`);
+          setPublishedPageIds((prev) => [...prev, pageId]); // Add to publishedPageIds
         } else {
           postResults.push({ pageId, success: false, message: data.message || 'Failed to post.' });
           setError(`Failed to post to page ${pageId}: ${data.message || 'Unknown error'}`);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         setPosting(false); // Set false on error too
-        postResults.push({ pageId, success: false, message: err.message || 'An unexpected error occurred.' });
-        setError(`Error posting to page ${pageId}: ${err.message || 'Unknown error'}`);
+        let errorMessage = 'An unexpected error occurred.';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        postResults.push({ pageId, success: false, message: errorMessage });
+        setError(`Error posting to page ${pageId}: ${errorMessage}`);
       }
 
       // Introduce delay if interval is specified and it's not the last page
@@ -166,10 +199,19 @@ export default function PostTextPage() {
     // Optionally, display a summary of all posts
     const successfulPosts = postResults.filter(res => res.success).length;
     const failedPosts = postResults.length - successfulPosts;
+
     if (successfulPosts > 0 && failedPosts === 0) {
-      setSuccessMessage(`Successfully posted to all ${successfulPosts} selected pages!`);
+      if (postOption === 'schedule') {
+        setSuccessMessage(`Successfully scheduled post to all ${successfulPosts} selected pages!`);
+      } else {
+        setSuccessMessage(`Successfully posted to all ${successfulPosts} selected pages!`);
+      }
     } else if (successfulPosts > 0 && failedPosts > 0) {
-      setSuccessMessage(`Posted to ${successfulPosts} pages. ${failedPosts} pages failed.`);
+      if (postOption === 'schedule') {
+        setSuccessMessage(`Scheduled to ${successfulPosts} pages. ${failedPosts} pages failed.`);
+      } else {
+        setSuccessMessage(`Posted to ${successfulPosts} pages. ${failedPosts} pages failed.`);
+      }
     } else {
       setError('No posts were successful.');
     }
@@ -197,129 +239,150 @@ export default function PostTextPage() {
   }
 
   return (
-    <div className="container mx-auto p-8">
-      <BackButton className="mb-4" />
-      <h1 className="text-3xl font-bold mb-6">Post Text to Facebook</h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-6 sm:p-8">
+        <BackButton className="mb-6" />
+        <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-8">Create Text Post</h1>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <span className="block sm:inline">{successMessage}</span>
-        </div>
-      )}
-
-      
-
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-        <FacebookAccountSelector
-          allConnectedAccounts={allConnectedAccounts}
-          selectedFacebookAccountId={selectedFacebookAccountId}
-          onSelectAccount={setSelectedFacebookAccountId}
-          loading={loading}
-        />
-
-        <FacebookPageSelector
-          availablePages={availablePagesForSelectedAccount}
-          selectedPageIds={selectedPageIds}
-          onSelectPages={setSelectedPageIds}
-          disabled={!selectedFacebookAccountId}
-        />
-
-        {/* Post Interval */}
-        <div className="mb-4">
-          <label htmlFor="postInterval" className="block text-gray-700 text-sm font-bold mb-2">Interval between posts (seconds):</label>
-          <input
-            type="number"
-            id="postInterval"
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="0 for no interval"
-            value={postInterval}
-            onChange={(e) => setPostInterval(Number(e.target.value))}
-            min="0"
-          />
-        </div>
-
-        {/* Caption Box */}
-        <div className="mb-4">
-          <label htmlFor="postCaption" className="block text-gray-700 text-sm font-bold mb-2">Caption (Optional):</label>
-          <textarea
-            id="postCaption"
-            rows={2}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="Add a caption to your post..."
-            value={postCaption}
-            onChange={(e) => setPostCaption(e.target.value)}
-          ></textarea>
-        </div>
-
-        {/* Text Box */}
-        <div className="mb-4">
-          <label htmlFor="postContent" className="block text-gray-700 text-sm font-bold mb-2">Post Content:</label>
-          <textarea
-            id="postContent"
-            rows={6}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            placeholder="What's on your mind?"
-            value={postContent}
-            onChange={(e) => setPostContent(e.target.value)}
-            required={postOption === 'now'} // Required only for immediate posts
-          ></textarea>
-        </div>
-
-        {/* Public Option */}
-        <div className="mb-6">
-          <span className="block text-gray-700 text-sm font-bold mb-2">Publish Option:</span>
-          <div className="mt-2">
-            <label className="inline-flex items-center mr-6">
-              <input
-                type="radio"
-                className="form-radio"
-                name="postOption"
-                value="now"
-                checked={postOption === 'now'}
-                onChange={() => setPostOption('now')}
-              />
-              <span className="ml-2">Public Now</span>
-            </label>
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                className="form-radio"
-                name="postOption"
-                value="schedule"
-                checked={postOption === 'schedule'}
-                onChange={() => setPostOption('schedule')}
-                disabled // Schedule option is not yet implemented
-              />
-              <span className="ml-2">Schedule (Coming Soon)</span>
-            </label>
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
+            <span className="block sm:inline font-medium">{error}</span>
           </div>
-        </div>
+        )}
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
+            <span className="block sm:inline font-medium">{successMessage}</span>
+          </div>
+        )}
 
-        <button
-          type="submit"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out w-full cursor-pointer"
-          disabled={posting || isCountingDown}
-        >
-          {posting ? (
-            <span className="flex items-center justify-center">
-              <Spinner className="h-5 w-5 text-white" />
-              Posting...
-            </span>
-          ) : isCountingDown ? (
-            <span className="flex items-center justify-center">
-              <Spinner className="h-5 w-5 text-white" />
-              Waiting for next post... {countdown}
-            </span>
-          ) : (
-            'Post to Facebook'
-          )}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <FacebookAccountSelector
+            allConnectedAccounts={allConnectedAccounts}
+            selectedFacebookAccountId={selectedFacebookAccountId}
+            onSelectAccount={setSelectedFacebookAccountId}
+            loading={loading}
+          />
+
+          <FacebookPageSelector
+            availablePages={availablePagesForSelectedAccount}
+            selectedPageIds={selectedPageIds}
+            onSelectPages={setSelectedPageIds}
+            disabled={!selectedFacebookAccountId}
+            publishedPageIds={publishedPageIds} // Pass the new prop
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Post Interval */}
+            <div>
+              <label htmlFor="postInterval" className="block text-sm font-medium text-gray-700 mb-2">Interval between posts (seconds):</label>
+              <input
+                type="number"
+                id="postInterval"
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
+                placeholder="0 for no interval"
+                value={postInterval}
+                onChange={(e) => setPostInterval(Number(e.target.value))}
+                min="0"
+              />
+            </div>
+
+            {/* Caption Box */}
+            <div>
+              <label htmlFor="postCaption" className="block text-sm font-medium text-gray-700 mb-2">Caption (Optional):</label>
+              <textarea
+                id="postCaption"
+                rows={3}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out resize-y"
+                placeholder="Add a compelling caption to your post..."
+                value={postCaption}
+                onChange={(e) => setPostCaption(e.target.value)}
+              ></textarea>
+            </div>
+          </div>
+
+          {/* Text Box */}
+          <div>
+            <label htmlFor="postContent" className="block text-sm font-medium text-gray-700 mb-2">Post Content:</label>
+            <textarea
+              id="postContent"
+              rows={8}
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out resize-y"
+              placeholder="What's on your mind? Share your thoughts here..."
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              required={postOption === 'now'}
+            ></textarea>
+          </div>
+
+          {/* Publish Option */}
+        <div className="pb-4">
+            <span className="block text-sm font-medium text-gray-700 mb-2">Publish Option:</span>
+            <div className="mt-2 flex items-center space-x-6">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  className="form-radio h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  name="postOption"
+                  value="now"
+                  checked={postOption === 'now'}
+                  onChange={() => setPostOption('now')}
+                />
+                <span className="ml-2 text-gray-900">Publish Now</span>
+              </label>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  className="form-radio h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  name="postOption"
+                  value="schedule"
+                  checked={postOption === 'schedule'}
+                  onChange={() => setPostOption('schedule')}
+                />
+                <span className="ml-2 text-gray-900">Schedule</span>
+              </label>
+            </div>
+            {postOption === 'schedule' && (
+              <div className="mt-4">
+                <label htmlFor="scheduledDatePicker" className="block text-sm font-medium text-gray-700 mb-2">Schedule Date and Time:</label>
+                <DatePicker
+                  ref={datePickerRef} // Attach the ref
+                  id="scheduledDatePicker"
+                  selected={scheduledDate}
+                  onChange={(date: Date | null) => setScheduledDate(date)}
+                  showTimeSelect
+                  showMinutes
+                  dateFormat="Pp"
+                  minDate={moment().toDate()} // Only allow scheduling in the future
+                  minTime={scheduledDate && moment(scheduledDate).isSame(moment(), 'day') ? moment().add(10, 'minutes').toDate() : moment().startOf('day').toDate()} // Lock previous times only for today's date
+                  maxTime={moment().endOf('day').toDate()} // Allow selection up to end of day
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
+                  placeholderText="Select date and time"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
+            disabled={posting || isCountingDown}
+          >
+            {posting ? (
+              <span className="flex items-center">
+                <Spinner className="h-5 w-5 mr-3 text-white animate-spin" />
+                Posting...
+              </span>
+            ) : isCountingDown ? (
+              <span className="flex items-center">
+                <Spinner className="h-5 w-5 mr-3 text-white animate-spin" />
+                Waiting for next post... {countdown}s
+              </span>
+            ) : (
+              'Post to Facebook'
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

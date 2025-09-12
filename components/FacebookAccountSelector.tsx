@@ -37,7 +37,7 @@ const FacebookAccountSelector: React.FC<FacebookAccountSelectorProps> = ({
       <label htmlFor="facebookAccountSelect" className="block text-gray-700 text-sm font-bold mb-2">Select Facebook Account:</label>
       <select
         id="facebookAccountSelect"
-        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
         value={selectedFacebookAccountId || ''}
         onChange={(e) => onSelectAccount(e.target.value)}
         required

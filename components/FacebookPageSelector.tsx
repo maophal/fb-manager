@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MdDoneOutline } from 'react-icons/md'; // Import the MdDoneOutline icon
 
 interface FacebookPage {
   id: number; // Database ID of the connected page entry
@@ -14,6 +15,7 @@ interface FacebookPageSelectorProps {
   selectedPageIds: string[];
   onSelectPages: (pageIds: string[]) => void;
   disabled: boolean;
+  publishedPageIds?: string[]; // New prop for pages that have been successfully published to
 }
 
 const FacebookPageSelector: React.FC<FacebookPageSelectorProps> = ({
@@ -21,6 +23,7 @@ const FacebookPageSelector: React.FC<FacebookPageSelectorProps> = ({
   selectedPageIds,
   onSelectPages,
   disabled,
+  publishedPageIds, // Add this line
 }) => {
   const handleSelectAll = () => {
     if (selectedPageIds.length === availablePages.length) {
@@ -50,24 +53,32 @@ const FacebookPageSelector: React.FC<FacebookPageSelectorProps> = ({
       >
         {selectedPageIds.length === availablePages.length ? 'Deselect All Pages' : 'Select All Pages'}
       </button>
-      <div className="border rounded p-2 max-h-60 overflow-y-auto">
+      <div className="p-2 rounded-md shadow-inner max-h-60 overflow-y-auto">
         {availablePages.length > 0 ? (
           availablePages.map((page) => (
-            <div key={page.page_id} className="flex items-center mb-2">
-              <input
-                type="checkbox"
-                id={`page-${page.page_id}`}
-                value={page.page_id}
-                checked={selectedPageIds.includes(page.page_id)}
-                onChange={handlePageCheckboxChange}
-                className="mr-2"
-                disabled={disabled}
-              />
-              {/* Placeholder for page logo - In a real app, you'd fetch this */}
-              <img src={page.page_picture_url || "/file.svg"} alt="Page Logo" className="w-8 h-8 rounded-full mr-2" />
-              <label htmlFor={`page-${page.page_id}`} className="text-gray-700">
-                {page.page_name} (<span className="text-sm text-gray-500">{page.page_id}</span>)
-              </label>
+            <div
+              key={page.page_id}
+              className="flex items-center justify-between py-2 border-b border-gray-200 last:border-b-0" // Added justify-between and border
+            >
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`page-${page.page_id}`}
+                  value={page.page_id}
+                  checked={selectedPageIds.includes(page.page_id)}
+                  onChange={handlePageCheckboxChange}
+                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" // Added some styling for checkbox
+                  disabled={disabled}
+                />
+                {/* Placeholder for page logo - In a real app, you'd fetch this */}
+                <img src={page.page_picture_url || "/file.svg"} alt="Page Logo" className="w-8 h-8 rounded-full mr-2 object-cover" />
+                <label htmlFor={`page-${page.page_id}`} className="text-gray-800 font-medium cursor-pointer">
+                  {page.page_name} <span className="text-sm text-gray-500 ml-1">({page.page_id})</span>
+                </label>
+              </div>
+              {publishedPageIds?.includes(page.page_id) && (
+                <MdDoneOutline className="h-6 w-6 text-green-500" />
+              )}
             </div>
           ))
         ) : (
