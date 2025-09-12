@@ -80,13 +80,13 @@ jobs:
           echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
           echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_DIR=/var/www/staging.facebook-manager" >> $GITHUB_OUTPUT # Staging path on server
+          echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/staging" >> $GITHUB_OUTPUT # Staging path on server
           echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT # PM2 app name for staging
         elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
           echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
           echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_DIR=/var/www/production.facebook-manager" >> $GITHUB_OUTPUT # Production path on server
+          echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT # Production path on server
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT # PM2 app name for production
         fi
 
@@ -121,7 +121,6 @@ jobs:
           npm install
           
           echo "Building Next.js application..."
-          # The artifact is downloaded, but rebuilding on the server ensures consistency
           npm run build
           
           echo "Moving new build to 'current' directory"
@@ -170,13 +169,13 @@ jobs:
           echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
           echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_DIR=/var/www/staging.facebook-manager" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/staging" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT
         elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
           echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
           echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_DIR=/var/www/production.facebook-manager" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
 
@@ -198,7 +197,7 @@ jobs:
             TIMESTAMP_FAILED=$(date +%Y%m%d%H%M%S)_failed_rollback
             sudo mv current backups/$TIMESTAMP_FAILED
             
-            # Restore the selected backup
+            echo "Restoring the selected backup..."
             sudo mv backups/$ROLLBACK_VERSION current
             
             echo "Restarting PM2 process: ${{ steps.set_rollback_target.outputs.PM2_APP_NAME }}"
