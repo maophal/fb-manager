@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
         fp.page_name,
         fp.facebook_user_id,
         fp.facebook_user_name,
-        fp.page_picture_url
+        fp.page_picture_url,
+        fp.page_access_token  -- Added page_access_token
       FROM
         facebook_pages fp
       WHERE
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
       id: number;
       page_id: string;
       page_name: string;
-      page_picture_url?: string; // Add optional page_picture_url
+      page_picture_url?: string;
+      page_access_token: string; // Added page_access_token
     }
     const groupedAccounts: { [key: string]: { facebook_user_id: string; facebook_user_name: string; pages: Page[] } } = {};
 
@@ -55,7 +57,8 @@ export async function GET(request: NextRequest) {
         id: row.page_db_id,
         page_id: row.page_id,
         page_name: row.page_name,
-        page_picture_url: row.page_picture_url // Add page_picture_url
+        page_picture_url: row.page_picture_url,
+        page_access_token: row.page_access_token // Added page_access_token
       });
     });
 

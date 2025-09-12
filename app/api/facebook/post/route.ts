@@ -8,11 +8,16 @@ export async function POST(request: NextRequest) {
   let client: Client | null = null;
   try {
     client = await pool.connect();
-    const { pageId, message, caption, scheduledPublishTime } = await request.json();
-    console.log('Request body:', { pageId, message, caption, scheduledPublishTime });
+    const { pageId, message, caption, attachedMedia, scheduledPublishTime } = await request.json();
+    console.log('Incoming payload to /api/facebook/post:', { pageId, message, caption, attachedMedia, scheduledPublishTime }); // Debug log
 
-    if (!pageId || !message) {
-      return NextResponse.json({ message: 'Page ID and message are required.' }, { status: 400 });
+    if (!pageId) {
+      return NextResponse.json({ message: 'Page ID is required.' }, { status: 400 });
+    }
+
+    // For multi-photo posts, 'attachedMedia' is required instead of 'message'
+    if (!message && (!attachedMedia || attachedMedia.length === 0)) {
+      return NextResponse.json({ message: 'Either message or attached media is required.' }, { status: 400 });
     }
 
     // Fetch the page access token from your database
@@ -33,18 +38,24 @@ export async function POST(request: NextRequest) {
     console.log(`Making Facebook Graph API call to: ${facebookApiUrl}`);
 
     const postBody: {
-      message: string;
+      message?: string; // message is optional for attached_media posts
       caption?: string;
       access_token: string;
       scheduled_publish_time?: number;
       published?: boolean;
+      attached_media?: { media_fbid: string }[]; // New: for multi-photo posts
     } = {
-      message: message,
       access_token: pageAccessToken,
     };
 
+    if (message) { // Only add message if it exists
+      postBody.message = message;
+    }
     if (caption) {
       postBody.caption = caption;
+    }
+    if (attachedMedia) {
+      postBody.attached_media = attachedMedia;
     }
 
     if (scheduledPublishTime) {
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
       // scheduled_publish_time parameter for Facebook's API.
     }
 
-    console.log('Request payload:', postBody);
+    console.log(`Sending payload to Facebook API for page ${pageId}:`, postBody); // Debug log
     const postResponse = await fetch(facebookApiUrl, {
       method: 'POST',
       headers: {
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     const postData = await postResponse.json();
-    console.log(`Facebook Graph API response for page ${pageId}:`, postData);
+    console.log(`Facebook Graph API response for page ${pageId}:`, postData); // Debug log
 
     if (postData.error) {
       console.error('Facebook API post error:', postData.error);
