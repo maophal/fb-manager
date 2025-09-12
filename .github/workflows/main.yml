@@ -1,0 +1,211 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual triggering of the workflow
+    inputs:
+      environment:
+        description: 'Deployment Environment (staging or production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      rollback_version:
+        description: 'Optional: Commit SHA to rollback to (e.g., a previous successful deployment)'
+        required: false
+        type: string
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # Use a Node.js version compatible with your project
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run ESLint
+      run: npm run lint
+
+    # --- TESTING CODE ---
+    # Add your actual test command here. For example, if you use Jest:
+    # - name: Run unit and integration tests
+    #   run: npm test
+    # If you have no tests yet, you can leave this commented or add a simple placeholder:
+    - name: Placeholder for tests (No tests configured yet)
+      run: echo "No unit/integration tests configured. Add 'npm test' here when ready."
+    # --- END TESTING CODE ---
+
+    - name: Build Next.js application
+      run: npm run build
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nextjs-build
+        path: .next/
+        retention-days: 7 # Keep artifacts for 7 days for potential rollbacks
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }} # Dynamically select environment (staging or production)
+    if: success() && github.event.inputs.rollback_version == '' # Only run if the build-and-test job succeeded AND no rollback is requested
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: nextjs-build
+        path: .next/
+
+    - name: Checkout code (for deploy script)
+      uses: actions/checkout@v4
+
+    - name: Set deployment target based on environment
+      id: set_target # This ID allows us to reference its outputs later
+      run: |
+        if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+          echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
+          echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/var/www/staging.facebook-manager" >> $GITHUB_OUTPUT # Staging path on server
+          echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT # PM2 app name for staging
+        elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
+          echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
+          echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/var/www/production.facebook-manager" >> $GITHUB_OUTPUT # Production path on server
+          echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT # PM2 app name for production
+        fi
+
+    - name: Deploy to AlmaLinux server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ steps.set_target.outputs.SSH_HOST }}
+        username: ${{ steps.set_target.outputs.SSH_USERNAME }}
+        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+        script: |
+          # Ensure the base project directory exists and has correct permissions
+          sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
+          sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
+          
+          cd ${{ steps.set_target.outputs.PROJECT_DIR }}
+          
+          # Create a 'backups' directory if it doesn't exist
+          mkdir -p backups
+          
+          # --- ROLLBACK PREPARATION: Create a backup of the current deployment ---
+          if [ -d "current" ]; then
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            echo "Creating backup of current deployment to backups/$TIMESTAMP"
+            sudo mv current backups/$TIMESTAMP
+          fi
+          # --- END ROLLBACK PREPARATION ---
+          
+          echo "Pulling latest code from Git (for deploy script and any non-artifact files)..."
+          git pull origin main
+          
+          echo "Installing Node.js dependencies..."
+          npm install
+          
+          echo "Building Next.js application..."
+          # The artifact is downloaded, but rebuilding on the server ensures consistency
+          npm run build
+          
+          echo "Moving new build to 'current' directory"
+          # The .next directory from the artifact is already in the runner's workspace.
+          # We need to move it to the server's project directory.
+          # Assuming the artifact was downloaded to the root of the runner's workspace,
+          # and the current working directory on the server is PROJECT_DIR.
+          # This part needs careful handling of artifact path vs server path.
+          # For simplicity, the 'npm run build' on the server is used here.
+          # If you want to use the artifact, you'd need to copy it over.
+          # For now, the script assumes 'npm run build' happens on the server.
+          
+          # To use the artifact, you'd add a step like this BEFORE the ssh-action:
+          # - name: Copy build artifact to server
+          #   uses: appleboy/scp-action@master
+          #   with:
+          #     host: ${{ steps.set_target.outputs.SSH_HOST }}
+          #     username: ${{ steps.set_target.outputs.SSH_USERNAME }}
+          #     key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+          #     source: ".next/"
+          #     target: "${{ steps.set_target.outputs.PROJECT_DIR }}/"
+          # And then in the script:
+          # sudo mv .next current # This assumes .next is copied to PROJECT_DIR
+          
+          # For this current script, we assume the build happens on the server after git pull
+          # So, the .next directory is already created in the PROJECT_DIR.
+          # We just need to ensure the PM2 app points to the correct build output.
+          
+          echo "Restarting PM2 process: ${{ steps.set_target.outputs.PM2_APP_NAME }}"
+          # This command assumes your PM2 app is configured to run 'npm start'
+          # and that 'npm start' serves the build from the .next directory.
+          pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start
+          
+          echo "Deployment complete for ${{ github.event.inputs.environment }}!"
+
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }} # Dynamically select environment
+    if: success() && github.event.inputs.rollback_version != '' # Only run if rollback is requested
+
+    steps:
+    - name: Set rollback target based on environment
+      id: set_rollback_target
+      run: |
+        if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+          echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
+          echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/var/www/staging.facebook-manager" >> $GITHUB_OUTPUT
+          echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
+          echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
+          echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "PROJECT_DIR=/var/www/production.facebook-manager" >> $GITHUB_OUTPUT
+          echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Rollback deployment
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ steps.set_rollback_target.outputs.SSH_HOST }}
+        username: ${{ steps.set_rollback_target.outputs.SSH_USERNAME }}
+        key: ${{ steps.set_rollback_target.outputs.SSH_PRIVATE_KEY }}
+        script: |
+          cd ${{ steps.set_rollback_target.outputs.PROJECT_DIR }}
+          
+          ROLLBACK_VERSION="${{ github.event.inputs.rollback_version }}"
+          
+          if [ -d "backups/$ROLLBACK_VERSION" ]; then
+            echo "Attempting rollback to version: $ROLLBACK_VERSION"
+            
+            # Move current to a temporary backup (in case rollback fails or is itself a bad version)
+            TIMESTAMP_FAILED=$(date +%Y%m%d%H%M%S)_failed_rollback
+            sudo mv current backups/$TIMESTAMP_FAILED
+            
+            # Restore the selected backup
+            sudo mv backups/$ROLLBACK_VERSION current
+            
+            echo "Restarting PM2 process: ${{ steps.set_rollback_target.outputs.PM2_APP_NAME }}"
+            pm2 restart ${{ steps.set_rollback_target.outputs.PM2_APP_NAME }}
+            
+            echo "Rollback to $ROLLBACK_VERSION complete!"
+          else
+            echo "Error: Rollback version $ROLLBACK_VERSION not found in backups."
+            exit 1 # Fail the GitHub Actions job if rollback version is not found
+          fi
