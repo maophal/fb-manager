@@ -115,6 +115,33 @@ export default function PostImagePage() {
     }
   }, [selectedFacebookAccountId, allConnectedAccounts]);
 
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files) {
+      const files = Array.from(e.dataTransfer.files);
+      const newImagePreviews = files.map(file => ({
+        id: 'upload-' + Date.now() + '-' + Math.random(),
+        url: URL.createObjectURL(file),
+        type: 'file' as 'file',
+        file: file,
+      }));
+      setImagePreviews(prev => [...prev, ...newImagePreviews]);
+    }
+  };
+
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -419,19 +446,24 @@ export default function PostImagePage() {
           </div>
 
           {/* Image Input Section */}
-          <div className="border border-gray-300 rounded-md shadow-sm p-4">
+          <div 
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-300 ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <div className="flex mb-4 border-b border-gray-200">
               <button
                 type="button"
                 className={`py-2 px-4 text-sm font-medium ${imageSourceType === 'url' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => { setImageSourceType('url'); setImagePreviews([]); }} // Clear file/previews when switching
+                onClick={() => { setImageSourceType('url'); setImagePreviews([]); }}
               >
                 Image URL
               </button>
               <button
                 type="button"
                 className={`py-2 px-4 text-sm font-medium ${imageSourceType === 'upload' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => { setImageSourceType('upload'); setCurrentImageUrlInput(''); }} // Clear URL/input when switching
+                onClick={() => { setImageSourceType('upload'); setCurrentImageUrlInput(''); }}
               >
                 Upload Image
               </button>
@@ -468,14 +500,15 @@ export default function PostImagePage() {
             )}
 
             {imageSourceType === 'upload' && (
-              <div>
-                <label htmlFor="imageUpload" className="block text-sm font-medium text-gray-700 mb-2">Upload Image:</label>
+              <div className="flex flex-col items-center justify-center">
+                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h10a4 4 0 014 4v5a4 4 0 01-4 4h-2m-6 4h.01M12 12h.01M12 8h.01M7 16h.01"></path></svg>
+                <p className="mt-2 text-sm text-gray-600">Drag & drop your images here, or <label htmlFor="imageUpload" className="text-blue-500 hover:underline cursor-pointer">browse</label></p>
                 <input
                   type="file"
                   id="imageUpload"
                   accept="image/*"
                   multiple
-                  className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="hidden"
                   onChange={handleImageFileChange}
                 />
               </div>
