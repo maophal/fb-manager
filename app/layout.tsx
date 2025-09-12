@@ -8,6 +8,7 @@ import Navbar from "../components/Navbar"; // Import the Navbar component
 import Footer from "../components/Footer"; // Import the Footer component
 import { LoadingProvider } from '@/context/LoadingContext'; // Import LoadingProvider
 import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthProvider
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Spinner from '../components/Spinner';
@@ -71,16 +72,18 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
         <AuthProvider>
-          <LoadingProvider className="flex flex-col min-h-screen">
-            <ProgressLoader />
-            <Navbar />
-            <MainContent>
-              <ProgressBar />
-              {children}
-            </MainContent>
-            <Footer />
-            <Toaster />
-          </LoadingProvider>
+          <ThemeProvider>
+            <LoadingProvider className="flex flex-col min-h-screen">
+              <ProgressLoader />
+              <Navbar />
+              <MainContent>
+                <ProgressBar />
+                {children}
+              </MainContent>
+              <Footer />
+              <Toaster />
+            </LoadingProvider>
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>
