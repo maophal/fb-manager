@@ -45,12 +45,7 @@ jobs:
 
     # Install dependencies
     - name: Install dependencies
-      run: |
-        # Use bcryptjs instead of bcrypt in CI/CD to avoid compilation issues
-        npm uninstall bcrypt || true
-        npm install bcryptjs
-        npm install @geist-ui/react
-        npm install
+      run: npm install
 
     - name: Run ESLint
       run: npm run lint
