@@ -48,7 +48,7 @@ export default function PostImagePage() {
   const [imageSourceType, setImageSourceType] = useState<'url' | 'upload'>('url');
   const [currentImageUrlInput, setCurrentImageUrlInput] = useState(''); // For single URL input
   const [imagePreviews, setImagePreviews] = useState<{ id: string; url: string; type: 'url' | 'file'; file?: File }[]>([]); // For displaying all image previews, including File object
-
+  const [isGettingImage, setIsGettingImage] = useState(false);
   // Effect to open DatePicker when schedule option is selected
   useEffect(() => {
     if (postOption === 'schedule' && datePickerRef.current) {
@@ -133,6 +133,7 @@ export default function PostImagePage() {
     const urls = currentImageUrlInput.split('\n').filter(url => url.trim() !== '');
     if (urls.length > 0) {
       setError(null);
+      setIsGettingImage(true);
       const newImagePreviews = [];
       for (const url of urls) {
         let finalImageUrl = url.trim();
@@ -161,6 +162,7 @@ export default function PostImagePage() {
       }
       setImagePreviews(prev => [...prev, ...newImagePreviews]);
       setCurrentImageUrlInput('');
+      setIsGettingImage(false);
     }
   };
 
@@ -451,8 +453,15 @@ export default function PostImagePage() {
                     type="button"
                     onClick={handleAddImageUrl}
                     className="mt-1 px-4 py-2 bg-blue-500 text-white rounded-md shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                  >
-                    Add Images
+                    disabled={isGettingImage}                  >
+                    {isGettingImage ? (
+                      <span className="flex items-center">
+                        <Spinner className="h-5 w-5 mr-3 text-white animate-spin" />
+                        Getting Image...
+                      </span>
+                    ) : (
+                      'Add Images'
+                    )}
                   </button>
                 </div>
                 </div>
