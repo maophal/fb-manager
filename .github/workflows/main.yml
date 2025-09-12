@@ -30,18 +30,15 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: '20' # Changed to LTS version
+        cache: 'npm' # Enable built-in npm caching
+        cache-dependency-path: 'package-lock.json' # Cache key based on package-lock.json
 
-    # Install Linux build tools for bcrypt
+    # Install Linux build tools for bcrypt (moved before npm install)
     - name: Install Linux build tools
       run: sudo apt-get update && sudo apt-get install -y build-essential python3
 
-    # Restore cached node_modules if available
-    - name: Cache Node modules
-      uses: actions/cache@v3
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+    # Removed separate actions/cache for node_modules
 
     # Install dependencies
     - name: Install dependencies
@@ -53,12 +50,7 @@ jobs:
     - name: Placeholder for tests
       run: echo "No unit/integration tests configured. Add 'npm test' here when ready."
 
-    # Cache build output for faster redeploys
-    - name: Cache Next.js build
-      uses: actions/cache@v3
-      with:
-        path: .next
-        key: nextjs-build-${{ github.sha }}
+    # Removed separate actions/cache for .next build output
 
     - name: Build Next.js application
       run: npm run build
