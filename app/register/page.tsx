@@ -43,8 +43,10 @@ export default function RegisterPage() {
         // Registration failed
         setError(data.message || 'Registration failed.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred during registration.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unexpected error occurred during registration.');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +135,7 @@ export default function RegisterPage() {
             </button>
           </div>
           <p className="text-center text-gray-600 text-sm mt-4">
-            Already have an account?' 
+            Already have an account?&apos; 
             <Link href="/login" className="text-blue-500 hover:text-blue-800">
               Login
             </Link>

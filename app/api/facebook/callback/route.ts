@@ -96,9 +96,10 @@ export async function GET(request: NextRequest) {
     const redirectUrl = `/facebook?status=success&message=Facebook_account_connected&pages=${encodeURIComponent(JSON.stringify(connectedPages))}`;
     return NextResponse.redirect(new URL(redirectUrl, request.url));
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Facebook callback error:', error);
-    const redirectUrl = `/facebook?status=error&message=${encodeURIComponent(error.message || 'Failed_to_connect_Facebook_account')}`;
+    const errorMessage = error instanceof Error ? error.message : 'Failed_to_connect_Facebook_account';
+    const redirectUrl = `/facebook?status=error&message=${encodeURIComponent(errorMessage)}`;
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   } finally {
     if (client) {

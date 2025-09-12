@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Spinner from '../../components/Spinner'; // Adjust path as needed
 import { useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useLoading } from '@/context/LoadingContext';
 
 interface FacebookPage {
   id: number; // Database ID of the connected page entry
@@ -22,9 +23,10 @@ export default function FacebookPage() {
   const { user, isLoggedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showLoading, hideLoading } = useLoading();
 
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedFacebookAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  
   const [connectingAccount, setConnectingAccount] = useState(false);
   const [disconnectingPageId, setDisconnectingPageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,54 +41,59 @@ export default function FacebookPage() {
     Enterprise: Infinity,
   };
 
-  const totalConnectedPages = connectedAccounts.reduce((sum, account) => sum + account.pages.length, 0);
+  
   const currentPlanLimit = user?.plan_id ? planLimits[user.plan_id] : 0;
-  const canConnectMorePages = totalConnectedPages < currentPlanLimit;
+  const canConnectMoreAccounts = connectedAccounts.length < currentPlanLimit;
 
-  const fetchConnectedAccounts = async () => {
-    setLoadingAccounts(true);
+  const fetchConnectedAccounts = useCallback(async (userId: string) => {
+    showLoading();
     setError(null);
     try {
-      const response = await fetch(`/api/facebook/pages?userId=${user?.id}`);
+      const response = await fetch(`/api/facebook/pages?userId=${userId}`);
       const data = await response.json();
       if (response.ok) {
         setConnectedAccounts(data.accounts);
       } else {
         setError(data.message || 'Failed to fetch connected Facebook accounts and pages.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred while fetching Facebook accounts and pages.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unexpected error occurred while fetching Facebook accounts and pages.');
+      }
     } finally {
-      setLoadingAccounts(false);
+      hideLoading();
     }
-  };
+  }, [hideLoading, showLoading]);
 
   useEffect(() => {
     if (!isLoggedIn) {
       router.push('/login');
       return;
     }
-    if (!user || !user.id) {
-      setError('User data not available. Please log in again.');
-      setLoadingAccounts(false);
-      return;
+
+    if (user && user.id) {
+      fetchConnectedAccounts(user.id);
     }
+  }, [isLoggedIn, user, fetchConnectedAccounts, router]);
 
-    fetchConnectedAccounts();
-
+  useEffect(() => {
     const status = searchParams.get('status');
     const message = searchParams.get('message');
-    const pages = searchParams.get('pages');
 
     if (status === 'success') {
       setSuccessMessage(message?.replace(/_/g, ' ') || 'Facebook account connected successfully!');
-      fetchConnectedAccounts(); // Re-fetch accounts to get updated list after connection
-      router.replace('/facebook', undefined, { shallow: true });
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('status');
+      newSearchParams.delete('message');
+      router.replace(`/facebook?${newSearchParams.toString()}`, undefined, { shallow: true });
     } else if (status === 'error') {
       setError(message?.replace(/_/g, ' ') || 'Failed to connect Facebook account.');
-      router.replace('/facebook', undefined, { shallow: true });
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete('status');
+      newSearchParams.delete('message');
+      router.replace(`/facebook?${newSearchParams.toString()}`, undefined, { shallow: true });
     }
-  }, [isLoggedIn, user, router, searchParams]);
+  }, [router, searchParams]);
 
   const toggleAccordion = (id: string) => {
     setOpenAccordion(openAccordion === id ? null : id);
@@ -97,8 +104,8 @@ export default function FacebookPage() {
       setError('User data not available. Please log in again.');
       return;
     }
-    if (!canConnectMorePages) {
-      setError(`You have reached the limit of ${currentPlanLimit} connected pages for your plan.`);
+    if (!canConnectMoreAccounts) {
+      setError(`You have reached the limit of ${currentPlanLimit} connected accounts for your plan.`);
       return;
     }
 
@@ -116,8 +123,10 @@ export default function FacebookPage() {
       } else {
         setError(data.message || 'Failed to initiate Facebook connection.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred while initiating Facebook connection.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unexpected error occurred while initiating Facebook connection.');
+      }
     }
   };
 
@@ -142,19 +151,14 @@ export default function FacebookPage() {
       } else {
         setError(data.message || 'Failed to disconnect page.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred while disconnecting page.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unexpected error occurred while disconnecting page.');
+      }
     }
   };
 
-  if (loadingAccounts) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <Spinner className="h-10 w-10 text-gray-600" />
-        <p className="text-gray-600 ml-3">Loading Facebook accounts...</p>
-      </div>
-    );
-  }
+  
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -175,7 +179,7 @@ export default function FacebookPage() {
         {/* Plan Limits Section */}
         <div className="mb-6 p-4 bg-blue-50 rounded-md border border-blue-200">
           <p className="text-blue-800 font-semibold">Your Plan: {user?.plan_id || 'N/A'}</p>
-          <p className="text-blue-800">Connected Pages: {totalConnectedPages} / {currentPlanLimit === Infinity ? 'Unlimited' : currentPlanLimit}</p>
+          <p className="text-blue-800">Connected Accounts: {connectedAccounts.length} / {currentPlanLimit === Infinity ? 'Unlimited' : currentPlanLimit}</p>
         </div>
 
         {/* Connect Page Section */}
@@ -183,7 +187,7 @@ export default function FacebookPage() {
           <h2 className="text-2xl font-semibold mb-4">Connect a New Facebook Account</h2>
           <button
             onClick={handleConnectPage}
-            disabled={connectingAccount || !canConnectMorePages}
+            disabled={connectingAccount || !canConnectMoreAccounts}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out flex-grow"
           >
             {connectingAccount ? (
@@ -195,8 +199,8 @@ export default function FacebookPage() {
               'Connect Facebook Account'
             )}
           </button>
-          {!canConnectMorePages && currentPlanLimit !== Infinity && (
-            <p className="text-red-600 text-sm">You have reached your plan's limit for connected pages.</p>
+          {!canConnectMoreAccounts && currentPlanLimit !== Infinity && (
+            <p className="text-red-600 text-sm">You have reached your plan&apos;s limit for connected accounts.</p>
           )}
         </div>
 

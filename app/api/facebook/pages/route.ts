@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
     const result = await client.query(getPagesQuery, [userId]);
 
     // Group pages by Facebook account
-    const groupedAccounts: { [key: string]: { facebook_user_id: string; facebook_user_name: string; pages: any[] } } = {};
+    interface Page {
+      id: number;
+      page_id: string;
+      page_name: string;
+    }
+    const groupedAccounts: { [key: string]: { facebook_user_id: string; facebook_user_name: string; pages: Page[] } } = {};
 
     result.rows.forEach(row => {
       if (!groupedAccounts[row.facebook_user_id]) {

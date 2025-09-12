@@ -4,16 +4,26 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link'; // Import Link for the button
+import Spinner from '../../components/Spinner'; // Import Spinner
 
 export default function AccountPage() {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      router.push('/login'); // Redirect to login if not logged in
+    if (!isLoggedIn && !isLoading) {
+      router.push('/login'); // Redirect to login if not logged in and not loading
     }
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, router, isLoading]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <Spinner className="h-10 w-10 text-gray-600" />
+        <p className="text-gray-600 ml-3">Loading account details...</p>
+      </div>
+    );
+  }
 
   if (!isLoggedIn || !user) {
     return (

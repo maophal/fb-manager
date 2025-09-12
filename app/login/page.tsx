@@ -55,8 +55,10 @@ export default function LoginPage() {
         // Login failed
         setError(data.message || 'Login failed.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred during login.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unexpected error occurred during login.');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,7 +132,7 @@ export default function LoginPage() {
             </button>
           </div>
           <p className="text-center text-gray-600 text-sm mt-4">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-blue-500 hover:text-blue-800">
               Register
             </Link>

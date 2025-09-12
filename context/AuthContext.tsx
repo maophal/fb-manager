@@ -1,15 +1,23 @@
 'use client';
 
-import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
+
+// Define user type
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  plan_id: string | null;
+}
 
 // Define action types
-type AuthAction = { type: 'LOGIN'; payload: any } | { type: 'LOGOUT' } | { type: 'SET_HAS_PICKED_PLAN'; payload: string } | { type: 'SET_LOADING'; payload: boolean }; // Added SET_LOADING
+type AuthAction = { type: 'LOGIN'; payload: User } | { type: 'LOGOUT' } | { type: 'SET_HAS_PICKED_PLAN'; payload: string } | { type: 'SET_LOADING'; payload: boolean }; // Added SET_LOADING
 
 // Define state type
 interface AuthState {
   isLoggedIn: boolean;
   hasPickedPlan: boolean;
-  user: any;
+  user: User | null;
   isLoading: boolean; // Added isLoading
 }
 
@@ -32,7 +40,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         currentUser.plan_id = action.payload;
         localStorage.setItem('user', JSON.stringify(currentUser));
       }
-      return { ...state, hasPickedPlan: true, user: { ...state.user, plan_id: action.payload } };
+      return { ...state, hasPickedPlan: true, user: { ...state.user, plan_id: action.payload } as User };
     case 'SET_LOADING': // Added SET_LOADING case
       return { ...state, isLoading: action.payload };
     default:
@@ -43,9 +51,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 interface AuthContextType {
   isLoggedIn: boolean;
   hasPickedPlan: boolean;
-  user: any;
+  user: User | null;
   isLoading: boolean; // Added isLoading
-  login: (userData: any) => void;
+  login: (userData: User) => void;
   logout: () => void;
   setHasPickedPlan: (planId: string) => void;
 }
@@ -53,14 +61,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(authReducer, { isLoggedIn: false, hasPickedPlan: false, user: null, isLoading: true }); // Initialize isLoading to true
+  const [state, dispatch] = useReducer(authReducer, { isLoggedIn: false, hasPickedPlan: false, user: null, isLoading: true });
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const storedIsLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
 
     const fetchUserData = async () => {
-      dispatch({ type: 'SET_LOADING', payload: true }); // Set loading to true before fetch
+      dispatch({ type: 'SET_LOADING', payload: true });
       try {
         if (storedIsLoggedIn && storedUser) {
           const response = await fetch(`/api/user/me?id=${storedUser.id}`);
@@ -77,13 +92,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error('Failed to fetch user data:', error);
         dispatch({ type: 'LOGOUT' });
       } finally {
-        dispatch({ type: 'SET_LOADING', payload: false }); // Set loading to false after fetch
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
     fetchUserData();
-  }, []); // Empty dependency array to run only on mount
+  }, [mounted]); // Run this effect only when mounted changes
 
-  const login = (userData: any) => {
+  const login = (userData: User) => {
     dispatch({ type: 'LOGIN', payload: userData });
   };
 
