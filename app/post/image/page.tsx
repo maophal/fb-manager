@@ -12,6 +12,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
 import { MdDoneOutline } from 'react-icons/md'; // Assuming this icon is still desired
+import toast from 'react-hot-toast';
 
 interface FacebookPage {
   id: number;
@@ -37,7 +38,6 @@ export default function PostImagePage() {
   const [isCountingDown, setIsCountingDown] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [postOption, setPostOption] = useState<'now' | 'schedule'>('now');
   const [publishedPageIds, setPublishedPageIds] = useState<string[]>([]);
@@ -66,14 +66,13 @@ export default function PostImagePage() {
       return;
     }
     if (!user || !user.id) {
-      setError('User data not available. Please log in again.');
+      toast.error('User data not available. Please log in again.');
       setLoading(false);
       return;
     }
 
     const fetchConnectedAccountsAndPages = async () => {
       setLoading(true);
-      setError(null);
       try {
         const response = await fetch(`/api/facebook/pages?userId=${user.id}`);
         const data = await response.json();
@@ -83,11 +82,11 @@ export default function PostImagePage() {
             setSelectedFacebookAccountId(data.accounts[0].facebook_user_id);
           }
         } else {
-          setError(data.message || 'Failed to fetch connected Facebook accounts and pages.');
+          toast.error(data.message || 'Failed to fetch connected Facebook accounts and pages.');
         }
       } catch (err: unknown) {
         if (err instanceof Error) {
-          setError(err.message || 'An unexpected error occurred while fetching Facebook accounts and pages.');
+          toast.error(err.message || 'An unexpected error occurred while fetching Facebook accounts and pages.');
         }
       } finally {
         setLoading(false);
@@ -132,34 +131,36 @@ export default function PostImagePage() {
     setIsDragging(false);
     if (e.dataTransfer.files) {
       const files = Array.from(e.dataTransfer.files);
-      const newImagePreviews = files.map(file => ({
-        id: 'upload-' + Date.now() + '-' + Math.random(),
-        url: URL.createObjectURL(file),
-        type: 'file' as 'file',
-        file: file,
-      }));
-      setImagePreviews(prev => [...prev, ...newImagePreviews]);
+      validateAndSetFiles(files);
     }
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const newImagePreviews = files.map(file => ({
-        id: 'upload-' + Date.now() + '-' + Math.random(),
-        url: URL.createObjectURL(file),
-        type: 'file' as 'file',
-        file: file,
-      }));
-      setImagePreviews(prev => [...prev, ...newImagePreviews]);
-      setCurrentImageUrlInput(''); // Clear URL input
+      validateAndSetFiles(files);
     }
+  };
+
+  const validateAndSetFiles = (files: File[]) => {
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    if (validFiles.length !== files.length) {
+      toast.error('Invalid file type. Please upload only images.');
+    }
+
+    const newImagePreviews = validFiles.map(file => ({
+      id: 'upload-' + Date.now() + '-' + Math.random(),
+      url: URL.createObjectURL(file),
+      type: 'file' as 'file',
+      file: file,
+    }));
+    setImagePreviews(prev => [...prev, ...newImagePreviews]);
+    setCurrentImageUrlInput(''); // Clear URL input
   };
 
   const handleAddImageUrl = async () => {
     const urls = currentImageUrlInput.split('\n').filter(url => url.trim() !== '');
     if (urls.length > 0) {
-      setError(null);
       setIsGettingImage(true);
       const newImagePreviews = [];
       for (const url of urls) {
@@ -177,11 +178,11 @@ export default function PostImagePage() {
             if (response.ok && data.directImageUrl) {
               finalImageUrl = data.directImageUrl;
             } else {
-              setError(`Could not extract direct image URL from Pinterest for: ${finalImageUrl}`);
+              toast.error(`Could not extract direct image URL from Pinterest for: ${finalImageUrl}`);
               continue;
             }
           } catch (err) {
-            setError(`Failed to process Pinterest URL: ${finalImageUrl}`);
+            toast.error(`Failed to process Pinterest URL: ${finalImageUrl}`);
             continue;
           }
         }
@@ -199,27 +200,26 @@ export default function PostImagePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setSuccessMessage(null);
     setCountdown(0);
     setIsCountingDown(false);
 
     if (imagePreviews.length === 0) {
-      setError('Please add at least one image URL or upload an image.');
+      toast.error('Please add at least one image URL or upload an image.');
       return;
     }
     if (selectedPageIds.length === 0) {
-      setError('Please select at least one Facebook page to post to.');
+      toast.error('Please select at least one Facebook page to post to.');
       return;
     }
 
     if (postOption === 'schedule' && !scheduledDate) {
-      setError('Please select a date and time for the scheduled post.');
+      toast.error('Please select a date and time for the scheduled post.');
       return;
     }
 
     if (postOption === 'schedule' && scheduledDate && scheduledDate < new Date()) {
-      setError('Scheduled date and time must be in the future.');
+      toast.error('Scheduled date and time must be in the future.');
       return;
     }
 
@@ -238,7 +238,7 @@ export default function PostImagePage() {
           const data = await response.json();
 
           if (!response.ok) {
-            setError(data.message || 'Failed to fetch connected Facebook accounts and pages for access token.');
+            toast.error(data.message || 'Failed to fetch connected Facebook accounts and pages for access token.');
             setPosting(false);
             return;
           }
@@ -247,7 +247,7 @@ export default function PostImagePage() {
           const pageAccessToken = selectedAccount?.pages.find((p: FacebookPage) => p.page_id === pageId)?.page_access_token;
 
           if (!pageAccessToken) {
-            setError(`Could not retrieve page access token for page ${pageId}.`);
+            toast.error(`Could not retrieve page access token for page ${pageId}.`);
             continue; // Skip to the next page
           }
 
@@ -269,13 +269,13 @@ export default function PostImagePage() {
           if (uploadResponse.ok && uploadData.id) {
             uploadedPhotoIds.push(uploadData.id);
           } else {
-            setError(`Failed to upload image for page ${pageId}: ${uploadData.error?.message || 'Unknown error'}`);
+            toast.error(`Failed to upload image for page ${pageId}: ${uploadData.error?.message || 'Unknown error'}`);
             break; // Stop uploading for this page if one image fails
           }
         }
 
         if (uploadedPhotoIds.length !== imagePreviews.length) {
-          setError(`Could not upload all images for page ${pageId}. Skipping post for this page.`);
+          toast.error(`Could not upload all images for page ${pageId}. Skipping post for this page.`);
           continue; // Skip to the next page
         }
 
@@ -303,7 +303,7 @@ export default function PostImagePage() {
           setPublishedPageIds((prev) => [...prev, pageId]);
         } else {
           postResults.push({ pageId, success: false, message: postData.message || 'Failed to create post.' });
-          setError(`Failed to create post for page ${pageId}: ${postData.message || 'Unknown error'}`);
+          toast.error(`Failed to create post for page ${pageId}: ${postData.message || 'Unknown error'}`);
         }
 
         if (i < selectedPageIds.length - 1) {
@@ -349,7 +349,7 @@ export default function PostImagePage() {
           setSuccessMessage(`Posted multi-image to ${successfulPosts} pages. ${failedPosts} pages failed.`);
         }
       } else {
-        setError('No multi-image posts were successful.');
+        toast.error('No multi-image posts were successful.');
       }
 
     } catch (err: unknown) {
@@ -357,7 +357,7 @@ export default function PostImagePage() {
       if (err instanceof Error) {
         errorMessage = err.message;
       }
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setPosting(false);
       console.log('Final post results:', postResults); // Debug log
@@ -389,11 +389,6 @@ export default function PostImagePage() {
         <BackButton className="mb-6" />
         <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-8">Create Image Post</h1>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
-            <span className="block sm:inline font-medium">{error}</span>
-          </div>
-        )}
         {successMessage && (
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
             <span className="block sm:inline font-medium">{successMessage}</span>

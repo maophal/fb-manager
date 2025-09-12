@@ -8,6 +8,7 @@ import Navbar from "../components/Navbar"; // Import the Navbar component
 import Footer from "../components/Footer"; // Import the Footer component
 import { LoadingProvider } from '@/context/LoadingContext'; // Import LoadingProvider
 import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthProvider
+import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import Spinner from '../components/Spinner';
 import MainContent from '../components/MainContent';
@@ -78,6 +79,7 @@ export default function RootLayout({
               {children}
             </MainContent>
             <Footer />
+            <Toaster />
           </LoadingProvider>
         </AuthProvider>
       </body>
