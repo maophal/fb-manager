@@ -60,14 +60,15 @@ jobs:
         ls -la
         ls -la ./.next
 
-    - name: Create .next tarball
-      run: tar -czf next-build.tar.gz ./.next
+    - name: Create full project tarball
+      run: |
+        tar --exclude='./node_modules' --exclude='./.git' -czf full-project.tar.gz .
 
-    - name: Upload build artifact
+    - name: Upload full project artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nextjs-build
-        path: next-build.tar.gz
+        name: full-project-build
+        path: full-project.tar.gz
         retention-days: 7
         if-no-files-found: error
 
@@ -78,14 +79,11 @@ jobs:
     if: success() && github.event.inputs.rollback_version == ''
 
     steps:
-    - name: Download build artifact
+    - name: Download full project artifact
       uses: actions/download-artifact@v4
       with:
-        name: nextjs-build
-        path: .next/
-
-    - name: Checkout code (for deploy script)
-      uses: actions/checkout@v4
+        name: full-project-build
+        path: .
 
     - name: Set deployment target based on environment
       id: set_target
@@ -107,15 +105,22 @@ jobs:
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
-
     
+    - name: Copy artifact to server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ steps.set_target.outputs.SSH_HOST }}
+        username: ${{ steps.set_target.outputs.SSH_USERNAME }}
+        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+        source: "full-project.tar.gz"
+        target: "${{ steps.set_target.outputs.PROJECT_DIR }}"
 
     - name: Deploy to AlmaLinux server
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}  
+        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
           sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
@@ -127,15 +132,16 @@ jobs:
             sudo mv current backups/$TIMESTAMP
           fi
 
-          echo "Pulling latest code..."
-          git pull origin main
+          mkdir current
+          tar -xzf full-project.tar.gz -C current
+          rm full-project.tar.gz
+
+          cd current
           echo "Installing dependencies..."
-          npm install
-          echo "Building Next.js app..."
-          npm run build
+          npm install --omit=dev
 
           echo "Restarting PM2 process..."
-          pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start --cwd ${{ steps.set_target.outputs.PROJECT_DIR }}
+          pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start --cwd ${{ steps.set_target.outputs.PROJECT_DIR }}/current
           echo "Deployment complete for ${{ github.event.inputs.environment }}!"
 
   rollback:
