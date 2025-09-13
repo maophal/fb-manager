@@ -109,6 +109,12 @@ jobs:
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
 
+    - name: Debug SSH parameters
+      run: |
+        echo "SSH_HOST: ${{ steps.set_target.outputs.SSH_HOST }}"
+        echo "SSH_USERNAME: ${{ steps.set_target.outputs.SSH_USERNAME }}"
+        echo "SSH_PRIVATE_KEY_PATH: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}"
+
     - name: Deploy to AlmaLinux server
       uses: appleboy/ssh-action@v1.0.3
       with:
