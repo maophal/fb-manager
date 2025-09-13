@@ -60,14 +60,14 @@ jobs:
         ls -la
         ls -la ./.next
 
-    - name: Wait for filesystem to settle
-      run: sleep 5
+    - name: Create .next tarball
+      run: tar -czf next-build.tar.gz ./.next
 
     - name: Upload build artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nextjs-build
-        path: ./.next
+        path: next-build.tar.gz
         retention-days: 7
         if-no-files-found: error
 
