@@ -87,6 +87,9 @@ jobs:
     - name: Checkout code (for deploy script)
       uses: actions/checkout@v4
 
+    - name: Debug environment input
+      run: echo "Raw environment input: ${{ github.event.inputs.environment }}"
+
     - name: Set deployment target based on environment
       id: set_target
       run: |
