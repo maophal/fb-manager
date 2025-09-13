@@ -93,25 +93,22 @@ jobs:
         if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
           echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/staging" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT
         elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
           echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
 
-    - name: Debug SSH parameters
-      run: |
-        echo "SSH_HOST: ${{ steps.set_target.outputs.SSH_HOST }}"
-        echo "SSH_USERNAME: ${{ steps.set_target.outputs.SSH_USERNAME }}"
-        echo "SSH_PRIVATE_KEY_PATH: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}"
-
-    - name: Debug SSH Private Key File Content
-      run: head -n 5 ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}
+    
 
     - name: Deploy to AlmaLinux server
       uses: appleboy/ssh-action@v1.0.3
@@ -153,13 +150,17 @@ jobs:
         if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
           echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/staging" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT
         elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
           echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "SSH_PRIVATE_KEY<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
