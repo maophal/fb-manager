@@ -90,16 +90,21 @@ jobs:
     - name: Set deployment target based on environment
       id: set_target
       run: |
+        SSH_PRIVATE_KEY_FILE=$(mktemp)
+        chmod 600 "$SSH_PRIVATE_KEY_FILE"
+
         if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
           echo "SSH_HOST=${{ secrets.STAGING_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.STAGING_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.STAGING_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" > "$SSH_PRIVATE_KEY_FILE"
+          echo "SSH_PRIVATE_KEY_PATH=$SSH_PRIVATE_KEY_FILE" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/staging" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-staging" >> $GITHUB_OUTPUT
         elif [ "${{ github.event.inputs.environment }}" == "production" ]; then
           echo "SSH_HOST=${{ secrets.PROD_SSH_HOST }}" >> $GITHUB_OUTPUT
           echo "SSH_USERNAME=${{ secrets.PROD_SSH_USERNAME }}" >> $GITHUB_OUTPUT
-          echo "SSH_PRIVATE_KEY=${{ secrets.PROD_SSH_PRIVATE_KEY }}" >> $GITHUB_OUTPUT
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > "$SSH_PRIVATE_KEY_FILE"
+          echo "SSH_PRIVATE_KEY_PATH=$SSH_PRIVATE_KEY_FILE" >> $GITHUB_OUTPUT
           echo "PROJECT_DIR=/mnt/volume_sgp1_01/fb-manager/production" >> $GITHUB_OUTPUT
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
@@ -109,7 +114,7 @@ jobs:
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
-        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+        key_path: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
           sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
