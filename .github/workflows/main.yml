@@ -62,7 +62,7 @@ jobs:
         name: nextjs-build
         path: .next/
         retention-days: 7
-        working-directory: ./
+        if-no-files-found: error
 
   deploy:
     needs: build-and-test
