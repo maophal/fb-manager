@@ -20,7 +20,7 @@ const Navbar = () => {
     router.push('/login');
   };
 
-  const handleMobileMenuLinkClick = (e, href) => {
+  const handleMobileMenuLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (!isLoggedIn && (href.startsWith('/post') || href.startsWith('/account') || href.startsWith('/facebook') || href.startsWith('/settings'))) {
       e.preventDefault();
       router.push('/login');
