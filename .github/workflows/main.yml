@@ -150,7 +150,7 @@ jobs:
           EOF
 
           echo "Installing dependencies..."
-          npm install --omit=dev
+          npm install
 
           echo "Restarting PM2 process..."
           pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start --cwd ${{ steps.set_target.outputs.PROJECT_DIR }}/current
