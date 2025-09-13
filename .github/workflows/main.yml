@@ -136,6 +136,19 @@ jobs:
           rm full-project.tar.gz
 
           cd current
+          echo "Creating .env.local file..."
+          cat << EOF > .env.local
+          PG_HOST=${{ secrets.PG_HOST }}
+          PG_PORT=${{ secrets.PG_PORT }}
+          PG_USER=${{ secrets.PG_USER }}
+          PG_PASSWORD=${{ secrets.PG_PASSWORD }}
+          PG_DATABASE=${{ secrets.PG_DATABASE }}
+          FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}
+          FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}
+          NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL }}
+          NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL }}
+          EOF
+
           echo "Installing dependencies..."
           npm install --omit=dev
 
