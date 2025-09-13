@@ -104,23 +104,15 @@ jobs:
           echo "PM2_APP_NAME=facebook-manager-prod" >> $GITHUB_OUTPUT
         fi
 
-    - name: Debug deployment target
-      run: |
-        echo "Environment: ${{ github.event.inputs.environment }}"
-        echo "SSH_HOST: ${{ steps.set_target.outputs.STAGING_SSH_HOST }}"
-        echo "SSH_USERNAME: ${{ steps.set_target.outputs.STAGING_SSH_USERNAME }}"
-        echo "PROJECT_DIR: ${{ steps.set_target.outputs.PROJECT_DIR }}"
-        echo "PM2_APP_NAME: ${{ steps.set_target.outputs.PM2_APP_NAME }}"
-
     - name: Deploy to AlmaLinux server
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ steps.set_target.outputs.STAGING_SSH_HOST }}
-        username: ${{ steps.set_target.outputs.STAGING_SSH_USERNAME }}
-        key: ${{ steps.set_target.outputs.STAGING_SSH_PRIVATE_KEY }}
+        host: ${{ steps.set_target.outputs.SSH_HOST }}
+        username: ${{ steps.set_target.outputs.SSH_USERNAME }}
+        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
-          sudo chown -R ${{ steps.set_target.outputs.STAGING_SSH_USERNAME }}:${{ steps.set_target.outputs.STAGING_SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
+          sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
           cd ${{ steps.set_target.outputs.PROJECT_DIR }}
           mkdir -p backups
 
