@@ -28,6 +28,15 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const handlePostLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      router.push('/login');
+    }
+    setShowPostMenu(false);
+    setIsMobileMenuOpen(false);
+  };
+
   const renderNavLinks = (isMobile = false) => (
     <>
       <Link href="/" className={isMobile ? "block py-2" : "hover:text-indigo-600 dark:hover:text-indigo-400"} onClick={(e) => isMobile && handleMobileMenuLinkClick(e, "/")}>
@@ -45,16 +54,16 @@ const Navbar = () => {
         </button>
         {showPostMenu && (
           <div className={isMobile ? "pl-4" : "absolute left-0 mt-2 w-48 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md shadow-lg py-1 z-10"}>
-            <Link href="/post/text" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handleMobileMenuLinkClick(e, "/post/text")}>
+            <Link href="/post/text" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handlePostLinkClick(e)}>
               Post Text
             </Link>
-            <Link href="/post/image" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handleMobileMenuLinkClick(e, "/post/image")}>
+            <Link href="/post/image" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handlePostLinkClick(e)}>
               Post Image
             </Link>
-            <Link href="/post/reel" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handleMobileMenuLinkClick(e, "/post/reel")}>
+            <Link href="/post/reel" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handlePostLinkClick(e)}>
               Post Reel
             </Link>
-            <Link href="/post/video" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handleMobileMenuLinkClick(e, "/post/video")}>
+            <Link href="/post/video" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600" onClick={(e) => handlePostLinkClick(e)}>
               Post Video
             </Link>
           </div>

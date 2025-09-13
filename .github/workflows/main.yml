@@ -159,7 +159,7 @@ jobs:
   rollback:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
-    if: success() && github.event.inputs.rollback_version != ''
+    if: success() && github.event_name == 'workflow_dispatch' && github.event.inputs.rollback_version != ''
 
     steps:
     - name: Set rollback target based on environment
@@ -200,5 +200,8 @@ jobs:
             echo "Rollback to $ROLLBACK_VERSION complete!"
           else
             echo "Error: Rollback version $ROLLBACK_VERSION not found."
+            exit 1
+          fi
+Rollback version $ROLLBACK_VERSION not found."
             exit 1
           fi

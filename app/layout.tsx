@@ -3,21 +3,19 @@
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
-import Navbar from "../components/Navbar"; // Import the Navbar component
-import Footer from "../components/Footer"; // Import the Footer component
-import { LoadingProvider } from '@/context/LoadingContext'; // Import LoadingProvider
-import { AuthProvider, useAuth } from '@/context/AuthContext'; // Import AuthProvider
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import { LoadingProvider } from '@/context/LoadingContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import MainContent from '../components/MainContent';
 import ProgressBar from '../components/ProgressBar';
 
 const geistSans = GeistSans;
 
 const geistMono = GeistMono;
-
-
 
 function ProgressLoader() {
   const { isLoading } = useAuth();
@@ -75,7 +73,9 @@ export default function RootLayout({
               <ProgressLoader />
               <Navbar />
               <MainContent>
-                <ProgressBar />
+                <Suspense>
+                  <ProgressBar />
+                </Suspense>
                 {children}
               </MainContent>
               <Footer />
