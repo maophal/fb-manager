@@ -115,13 +115,15 @@ jobs:
         echo "SSH_USERNAME: ${{ steps.set_target.outputs.SSH_USERNAME }}"
         echo "SSH_PRIVATE_KEY_PATH: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}"
 
+    - name: Debug SSH Private Key File Content
+      run: head -n 5 ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}
+
     - name: Deploy to AlmaLinux server
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
         key_path: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY_PATH }}
-        host_key_checking: "no" # Added for debugging
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
           sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
