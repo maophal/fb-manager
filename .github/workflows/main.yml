@@ -56,7 +56,9 @@ jobs:
       run: npm run build
 
     - name: List directory after build
-      run: ls -la
+      run: |
+        ls -la
+        ls -la ./.next
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
