@@ -153,7 +153,7 @@ jobs:
           npm install
 
           echo "Restarting PM2 process..."
-          pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start --cwd ${{ steps.set_target.outputs.PROJECT_DIR }}/current
+          pm2 restart ${{ steps.set_target.outputs.PM2_APP_NAME }} || pm2 start npm --name "${{ steps.set_target.outputs.PM2_APP_NAME }}" -- start
           echo "Deployment complete for ${{ github.event.inputs.environment }}!"
 
   rollback:
