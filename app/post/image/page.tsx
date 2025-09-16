@@ -204,6 +204,12 @@ export default function PostImagePage() {
     setCountdown(0);
     setIsCountingDown(false);
 
+    if (!process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL) {
+      toast.error('Facebook API base URL is not configured. Please contact support.');
+      setPosting(false);
+      return;
+    }
+
     if (imagePreviews.length === 0) {
       toast.error('Please add at least one image URL or upload an image.');
       return;
