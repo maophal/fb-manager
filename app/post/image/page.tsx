@@ -265,7 +265,15 @@ export default function PostImagePage() {
             body: uploadFormData,
           });
 
-          const uploadData = await uploadResponse.json();
+          let uploadData;
+          try {
+            uploadData = await uploadResponse.json();
+          } catch (e) {
+            const text = await uploadResponse.text();
+            console.error("Failed to parse JSON from upload response. Response text:", text);
+            toast.error('An error occurred while uploading the image. Please check the console for details.');
+            break; // Stop uploading for this page
+          }
           if (uploadResponse.ok && uploadData.id) {
             uploadedPhotoIds.push(uploadData.id);
           } else {
@@ -295,7 +303,15 @@ export default function PostImagePage() {
           body: JSON.stringify(postPayload),
         });
 
-        const postData = await postResponse.json();
+        let postData;
+        try {
+            postData = await postResponse.json();
+        } catch (e) {
+            const text = await postResponse.text();
+            console.error("Failed to parse JSON from post response. Response text:", text);
+            toast.error('An error occurred while creating the post. Please check the console for details.');
+            continue; // Skip to the next page
+        }
 
         if (postResponse.ok) {
           postResults.push({ pageId, success: true, postId: postData.postId });
