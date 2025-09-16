@@ -260,20 +260,12 @@ export default function PostImagePage() {
             uploadFormData.append('source', image.file, image.file.name);
           }
 
-          const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL}${pageId}/photos`, {
+          const uploadResponse = await fetch(`https://graph.facebook.com/v23.0/${pageId}/photos`, {
             method: 'POST',
             body: uploadFormData,
           });
 
-          let uploadData;
-          try {
-            uploadData = await uploadResponse.json();
-          } catch (e) {
-            const text = await uploadResponse.text();
-            console.error("Failed to parse JSON from upload response. Response text:", text);
-            toast.error('An error occurred while uploading the image. Please check the console for details.');
-            break; // Stop uploading for this page
-          }
+          const uploadData = await uploadResponse.json();
           if (uploadResponse.ok && uploadData.id) {
             uploadedPhotoIds.push(uploadData.id);
           } else {
@@ -303,15 +295,7 @@ export default function PostImagePage() {
           body: JSON.stringify(postPayload),
         });
 
-        let postData;
-        try {
-            postData = await postResponse.json();
-        } catch (e) {
-            const text = await postResponse.text();
-            console.error("Failed to parse JSON from post response. Response text:", text);
-            toast.error('An error occurred while creating the post. Please check the console for details.');
-            continue; // Skip to the next page
-        }
+        const postData = await postResponse.json();
 
         if (postResponse.ok) {
           postResults.push({ pageId, success: true, postId: postData.postId });
