@@ -103,15 +103,29 @@ export async function POST(request: NextRequest) {
     let outputWidth: number;
     let outputHeight: number;
 
-    // Removed cropFilter calculation
-    // let cropFilter: string;
-    // let outputWidth: number;
-    // let outputHeight: number;
-    // const currentAspectRatio = originalWidth / originalHeight;
-    // cropFilter = 'iw/2:ih/2:iw/4:ih/4'; // Crops the center half of the video
-    // outputWidth = originalWidth / 2;
-    // outputHeight = originalHeight / 2;
-    // console.log(`Using fixed crop: ${cropFilter}`);
+    const currentAspectRatio = originalWidth / originalHeight;
+
+    if (currentAspectRatio > targetAspectRatio) {
+      // Video is wider than 9:16, crop horizontally (center crop)
+      outputHeight = originalHeight;
+      outputWidth = Math.round(originalHeight * targetAspectRatio);
+      const x = Math.round((originalWidth - outputWidth) / 2);
+      cropFilter = `${outputWidth}:${outputHeight}:${x}:0`;
+      console.log(`Cropping horizontally: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (x=${x})`);
+    } else if (currentAspectRatio < targetAspectRatio) {
+      // Video is taller than 9:16, crop vertically (center crop)
+      outputWidth = originalWidth;
+      outputHeight = Math.round(originalWidth / targetAspectRatio);
+      const y = Math.round((originalHeight - outputHeight) / 2);
+      cropFilter = `${outputWidth}:${outputHeight}:0:${y}`;
+      console.log(`Cropping vertically: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (y=${y})`);
+    } else {
+      // Aspect ratio is already 9:16, no cropping needed
+      cropFilter = `${originalWidth}:${originalHeight}:0:0`; // No-op crop
+      outputWidth = originalWidth;
+      outputHeight = originalHeight;
+      console.log('Video aspect ratio is already 9:16, no cropping needed.');
+    }
 
     croppedVideoPath = path.join('/tmp', `cropped-${Date.now()}-${videoFile.name}`);
 
@@ -126,6 +140,16 @@ export async function POST(request: NextRequest) {
         return reject(new Error('originalVideoPath is not defined'));
       }
       ffmpeg(originalVideoPath)
+        .videoFilters(`crop=${cropFilter}`)
+        .outputOptions([
+          '-c:v libx264', // Use H.264 codec
+          '-preset medium', // Encoding preset (e.g., medium, fast, slow)
+          '-crf 23', // Constant Rate Factor for quality (lower is better quality, larger file)
+          '-c:a aac', // Use AAC audio codec
+          '-b:a 128k', // Audio bitrate
+          '-movflags +faststart', // Optimize for streaming
+          '-max_muxing_queue_size 1024' // Increase queue size to prevent buffer issues
+        ])
         .on('start', (commandLine) => {
           console.log('Spawned FFmpeg with command:', commandLine);
         })
