@@ -126,15 +126,6 @@ export async function POST(request: NextRequest) {
         return reject(new Error('originalVideoPath is not defined'));
       }
       ffmpeg(originalVideoPath)
-        .outputOptions([
-          '-c:v libx264', // Use H.264 codec
-          '-preset medium', // Encoding preset (e.g., medium, fast, slow)
-          '-crf 23', // Constant Rate Factor for quality (lower is better quality, larger file)
-          '-c:a aac', // Use AAC audio codec
-          '-b:a 128k', // Audio bitrate
-          '-movflags +faststart', // Optimize for streaming
-          '-max_muxing_queue_size 1024' // Increase queue size to prevent buffer issues
-        ])
         .on('start', (commandLine) => {
           console.log('Spawned FFmpeg with command:', commandLine);
         })
