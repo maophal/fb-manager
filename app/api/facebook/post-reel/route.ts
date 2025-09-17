@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
     const originalHeight = videoStream.height;
     const targetAspectRatio = 9 / 16; // Facebook Reels aspect ratio
 
+    let cropFilter: string;
     let outputWidth: number;
     let outputHeight: number;
 
