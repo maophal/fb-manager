@@ -148,7 +148,6 @@ export async function POST(request: NextRequest) {
           '-c:a aac', // Use AAC audio codec
           '-b:a 128k', // Audio bitrate
           '-movflags +faststart', // Optimize for streaming
-          '-vf scale=min(1080\,iw):-1', // Scale width to max 1080px, maintain aspect ratio
           '-max_muxing_queue_size 1024' // Increase queue size to prevent buffer issues
         ])
         .on('start', (commandLine) => {
