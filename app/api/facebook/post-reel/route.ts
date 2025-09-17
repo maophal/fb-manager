@@ -105,27 +105,10 @@ export async function POST(request: NextRequest) {
 
     const currentAspectRatio = originalWidth / originalHeight;
 
-    if (currentAspectRatio > targetAspectRatio) {
-      // Video is wider than 9:16, crop horizontally (center crop)
-      outputHeight = originalHeight;
-      outputWidth = Math.round(originalHeight * targetAspectRatio);
-      const x = Math.round((originalWidth - outputWidth) / 2);
-      cropFilter = `${outputWidth}:${outputHeight}:${x}:0`;
-      console.log(`Cropping horizontally: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (x=${x})`);
-    } else if (currentAspectRatio < targetAspectRatio) {
-      // Video is taller than 9:16, crop vertically (center crop)
-      outputWidth = originalWidth;
-      outputHeight = Math.round(originalWidth / targetAspectRatio);
-      const y = Math.round((originalHeight - outputHeight) / 2);
-      cropFilter = `${outputWidth}:${outputHeight}:0:${y}`;
-      console.log(`Cropping vertically: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (y=${y})`);
-    } else {
-      // Aspect ratio is already 9:16, no cropping needed
-      cropFilter = `${originalWidth}:${originalHeight}:0:0`; // No-op crop
-      outputWidth = originalWidth;
-      outputHeight = originalHeight;
-      console.log('Video aspect ratio is already 9:16, no cropping needed.');
-    }
+    cropFilter = 'iw/2:ih/2:iw/4:ih/4'; // Crops the center half of the video
+    outputWidth = originalWidth / 2;
+    outputHeight = originalHeight / 2;
+    console.log(`Using fixed crop: ${cropFilter}`);
 
     croppedVideoPath = path.join('/tmp', `cropped-${Date.now()}-${videoFile.name}`);
 
