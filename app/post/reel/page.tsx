@@ -12,6 +12,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
 import toast from 'react-hot-toast';
+import VideoUploadProcessor from '../../../components/VideoUploadProcessor';
 
 interface FacebookPage {
   id: number;
@@ -26,7 +27,7 @@ interface ConnectedFacebookAccount {
   pages: FacebookPage[];
 }
 
-const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024; // 2GB safety cap (adjust as needed)
+
 
 export default function PostReelPage() {
   const { user, isLoggedIn } = useAuth();
@@ -44,6 +45,9 @@ export default function PostReelPage() {
   const [publishedPageIds, setPublishedPageIds] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState<Date | null>(moment().add(10, 'minutes').toDate());
   const datePickerRef = useRef<DatePicker>(null);
+
+  // State to store the video ID after a successful post for status checking
+  const [postedVideoId, setPostedVideoId] = useState<string | null>(null);
 
   // Reel specific states
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -120,30 +124,32 @@ export default function PostReelPage() {
     };
   }, [videoPreviewUrl]);
 
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
+  
 
-      if (!file.type.startsWith('video/')) {
-        toast.error('Invalid file type. Please upload a video file.');
-        return;
-      }
-      if (file.size > MAX_VIDEO_BYTES) {
-        toast.error('Video file is too large.');
-        return;
-      }
-
-      setVideoFile(file);
-      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-      const previewUrl = URL.createObjectURL(file);
-      setVideoPreviewUrl(previewUrl);
-    }
-  };
+      
 
   const handleRemoveVideo = () => {
     setVideoFile(null);
     if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
     setVideoPreviewUrl(null);
+  };
+
+  const checkReelStatus = async (videoId: string, pageId: string) => {
+    toast.loading('Checking reel status...');
+    try {
+      const response = await fetch(`/api/facebook/reel-status?videoId=${videoId}&pageId=${pageId}`);
+      const data = await response.json();
+      toast.dismiss(); // Dismiss loading toast
+
+      if (response.ok) {
+        toast.success(`Reel Status for ${videoId} on page ${pageId}: ${JSON.stringify(data.status)}`, { duration: 5000 });
+      } else {
+        toast.error(`Failed to get status for ${videoId} on page ${pageId}: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      toast.dismiss(); // Dismiss loading toast
+      toast.error(`Error checking reel status: ${error.message}`);
+    }
   };
 
   const canSubmit =
@@ -207,6 +213,7 @@ export default function PostReelPage() {
           postResults.push({ pageId, success: true, postId: data.postId });
           setSuccessMessage(`Reel post created for page ${pageId}! Post ID: ${data.postId}`);
           setPublishedPageIds((prev) => [...prev, pageId]);
+          setPostedVideoId(data.postId); // Store the videoId for status checking
         } else {
           const msg = data?.message || `HTTP ${response.status}`;
           postResults.push({ pageId, success: false, message: msg });
@@ -305,6 +312,17 @@ export default function PostReelPage() {
             role="alert"
           >
             <span className="block sm:inline font-medium">{successMessage}</span>
+            {postedVideoId && selectedPageIds.length > 0 && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => checkReelStatus(postedVideoId, selectedPageIds[0])} // Assuming checking status for the first selected page for simplicity
+                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Check Reel Status
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -356,44 +374,13 @@ export default function PostReelPage() {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="videoUpload" className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Video:
-            </label>
-            <input
-              type="file"
-              id="videoUpload"
-              accept="video/*"
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              onChange={handleVideoFileChange}
-            />
-          </div>
-
-          {videoPreviewUrl && (
-            <div className="mt-4">
-              <p className="block text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
-              <div className="relative">
-                <video src={videoPreviewUrl} controls className="w-full rounded-md shadow-md"></video>
-                <button
-                  type="button"
-                  onClick={handleRemoveVideo}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                  title="Remove video"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
+          <VideoUploadProcessor
+            onVideoProcessed={setVideoFile}
+            onRemoveVideo={handleRemoveVideo}
+            videoFile={videoFile}
+            videoPreviewUrl={videoPreviewUrl}
+            setVideoPreviewUrl={setVideoPreviewUrl}
+          />
 
           <div className="pb-4">
             <span className="block text-sm font-medium text-gray-700 mb-2">Publish Option:</span>
