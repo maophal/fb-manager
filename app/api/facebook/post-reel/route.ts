@@ -7,6 +7,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb',
+    },
+  },
+};
+
 // Ensure ffmpeg path is set if not in system PATH
 // You might need to adjust this path based on your server setup
 // ffmpeg.setFfmpegPath('/usr/local/bin/ffmpeg');
