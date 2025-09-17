@@ -99,7 +99,6 @@ export async function POST(request: NextRequest) {
     const originalHeight = videoStream.height;
     const targetAspectRatio = 9 / 16; // Facebook Reels aspect ratio
 
-    let cropFilter: string;
     let outputWidth: number;
     let outputHeight: number;
 
@@ -140,15 +139,21 @@ export async function POST(request: NextRequest) {
         return reject(new Error('originalVideoPath is not defined'));
       }
       ffmpeg(originalVideoPath)
-        .videoFilters(`crop=${cropFilter}`)
+        .videoFilters(`crop=${cropFilter},scale=1080:1920`) // Apply crop then scale
         .outputOptions([
-          '-c:v libx264', // Use H.264 codec
-          '-preset medium', // Encoding preset (e.g., medium, fast, slow)
-          '-crf 23', // Constant Rate Factor for quality (lower is better quality, larger file)
-          '-c:a aac', // Use AAC audio codec
-          '-b:a 128k', // Audio bitrate
+          '-c:v libx264', // H.264 codec
+          '-preset medium', // Encoding preset
+          '-crf 23', // Constant Rate Factor for quality
+          '-pix_fmt yuv420p', // Chroma subsampling 4:2:0
+          '-g 60', // Closed GOP (2 seconds at 30fps)
+          '-keyint_min 60', // Minimum keyframe interval
+          '-r 30', // Fixed frame rate (30 fps)
           '-movflags +faststart', // Optimize for streaming
-          '-max_muxing_queue_size 1024' // Increase queue size to prevent buffer issues
+          '-c:a aac', // AAC audio codec
+          '-b:a 128k', // Audio bitrate
+          '-ar 48000', // Audio sample rate 48kHz
+          '-ac 2', // Stereo audio channels
+          '-max_muxing_queue_size 1024' // Increase queue size
         ])
         .on('start', (commandLine) => {
           console.log('Spawned FFmpeg with command:', commandLine);
