@@ -74,7 +74,8 @@ jobs:
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
     if: success() && github.event.inputs.rollback_version == ''
 
     steps:
@@ -158,7 +159,8 @@ jobs:
 
   rollback:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
     if: success() && github.event.inputs.rollback_version != ''
 
     steps:

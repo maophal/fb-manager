@@ -103,12 +103,15 @@ export async function POST(request: NextRequest) {
     let outputWidth: number;
     let outputHeight: number;
 
-    const currentAspectRatio = originalWidth / originalHeight;
-
-    cropFilter = 'iw/2:ih/2:iw/4:ih/4'; // Crops the center half of the video
-    outputWidth = originalWidth / 2;
-    outputHeight = originalHeight / 2;
-    console.log(`Using fixed crop: ${cropFilter}`);
+    // Removed cropFilter calculation
+    // let cropFilter: string;
+    // let outputWidth: number;
+    // let outputHeight: number;
+    // const currentAspectRatio = originalWidth / originalHeight;
+    // cropFilter = 'iw/2:ih/2:iw/4:ih/4'; // Crops the center half of the video
+    // outputWidth = originalWidth / 2;
+    // outputHeight = originalHeight / 2;
+    // console.log(`Using fixed crop: ${cropFilter}`);
 
     croppedVideoPath = path.join('/tmp', `cropped-${Date.now()}-${videoFile.name}`);
 
@@ -123,7 +126,6 @@ export async function POST(request: NextRequest) {
         return reject(new Error('originalVideoPath is not defined'));
       }
       ffmpeg(originalVideoPath)
-        .videoFilters(`crop=${cropFilter}`)
         .outputOptions([
           '-c:v libx264', // Use H.264 codec
           '-preset medium', // Encoding preset (e.g., medium, fast, slow)
