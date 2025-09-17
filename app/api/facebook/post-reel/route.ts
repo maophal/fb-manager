@@ -3,9 +3,9 @@ import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
 import https from 'https';
 import { URL } from 'url';
-import fs from 'fs/promises'; // For file system operations
-import path from 'path'; // For path manipulation
-import ffmpeg from 'fluent-ffmpeg'; // For video processing
+import fs from 'fs/promises';
+import path from 'path';
+import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 
 // Ensure ffmpeg path is set if not in system PATH
 // You might need to adjust this path based on your server setup
@@ -67,17 +67,24 @@ export async function POST(request: NextRequest) {
     await fs.writeFile(originalVideoPath, videoBuffer);
     console.log('Original video saved to:', originalVideoPath);
 
+    if (!originalVideoPath) {
+      throw new Error('originalVideoPath is not defined');
+    }
+
     // Get video metadata to determine cropping
-    const metadata: any = await new Promise((resolve, reject) => {
-      ffmpeg.ffprobe(originalVideoPath, (err, data) => {
+    const metadata = await new Promise<FfprobeData>((resolve, reject) => {
+      if (!originalVideoPath) {
+        return reject(new Error('originalVideoPath is not defined'));
+      }
+      ffmpeg.ffprobe(originalVideoPath, (err: Error, data: FfprobeData) => {
         if (err) reject(err);
         else resolve(data);
       });
     });
 
-    const videoStream = metadata.streams.find((s: any) => s.codec_type === 'video');
-    if (!videoStream) {
-      throw new Error('No video stream found in the uploaded file.');
+    const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
+    if (!videoStream || typeof videoStream.width === 'undefined' || typeof videoStream.height === 'undefined') {
+      throw new Error('No video stream with dimensions found in the uploaded file.');
     }
 
     const originalWidth = videoStream.width;
@@ -114,7 +121,16 @@ export async function POST(request: NextRequest) {
 
     croppedVideoPath = path.join('/tmp', `cropped-${Date.now()}-${videoFile.name}`);
 
+    if (!croppedVideoPath) {
+      throw new Error('croppedVideoPath is not defined');
+    }
+
+    const finalCroppedPath = croppedVideoPath;
+
     await new Promise<void>((resolve, reject) => {
+      if (!originalVideoPath) {
+        return reject(new Error('originalVideoPath is not defined'));
+      }
       ffmpeg(originalVideoPath)
         .videoFilters(`crop=${cropFilter}`)
         .outputOptions([
@@ -141,7 +157,7 @@ export async function POST(request: NextRequest) {
           console.error('FFmpeg error:', err.message);
           reject(new Error(`Video cropping failed: ${err.message}`));
         })
-        .save(croppedVideoPath);
+        .save(finalCroppedPath);
     });
 
     // Read the cropped video file for upload

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 interface VideoUploadProcessorProps {
@@ -14,7 +14,6 @@ const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024; // 2GB safety cap
 const VideoUploadProcessor: React.FC<VideoUploadProcessorProps> = ({
   onVideoProcessed,
   onRemoveVideo,
-  videoFile,
   videoPreviewUrl,
   setVideoPreviewUrl,
 }) => {

@@ -18,7 +18,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mt-10">Key Features</h2>
           <ul className="list-disc list-inside space-y-2">
             <li><strong>Multi-Page Management:</strong> Connect multiple Facebook pages and switch between them seamlessly from a single dashboard.</li>
-            <li><strong>Versatile Post Creation:</strong> Whether it's a simple text update, a stunning image, a compelling video, or a trendy Reel, our tool supports all major post formats.</li>
+            <li><strong>Versatile Post Creation:</strong> Whether it&apos;s a simple text update, a stunning image, a compelling video, or a trendy Reel, our tool supports all major post formats.</li>
             <li><strong>Intuitive Interface:</strong> A clean and modern interface designed for an effortless user experience.</li>
             <li><strong>Secure Connection:</strong> We use official Facebook APIs and secure authentication to protect your account and data. Your credentials and tokens are handled with the utmost care.</li>
           </ul>

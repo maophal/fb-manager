@@ -30,7 +30,7 @@ export default function PrivacyPage() {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mt-10">3. Information Sharing</h2>
           <p>We do not sell your personal data. We only share information under the following circumstances:</p>
           <ul className="list-disc list-inside space-y-2">
-            <li>**With Facebook:** We share content and instructions with the Facebook API to execute your posts. Our use of the API is subject to Facebook's policies.</li>
+            <li>**With Facebook:** We share content and instructions with the Facebook API to execute your posts. Our use of the API is subject to Facebook&apos;s policies.</li>
             <li>**For Legal Reasons:** We may disclose information if required by law or to protect our rights.</li>
           </ul>
 

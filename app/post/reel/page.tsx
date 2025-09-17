@@ -146,9 +146,13 @@ export default function PostReelPage() {
       } else {
         toast.error(`Failed to get status for ${videoId} on page ${pageId}: ${data.message || 'Unknown error'}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.dismiss(); // Dismiss loading toast
-      toast.error(`Error checking reel status: ${error.message}`);
+      if (error instanceof Error) {
+        toast.error(`Error checking reel status: ${error.message}`);
+      } else {
+        toast.error('An unknown error occurred while checking reel status.');
+      }
     }
   };
 
@@ -202,7 +206,7 @@ export default function PostReelPage() {
           body: formData, // keep browser-managed multipart; do not set Content-Type manually
         });
 
-        let data: any = {};
+        let data: { success?: boolean; postId?: string; message?: string } = {};
         try {
           data = await response.json();
         } catch {
@@ -213,7 +217,7 @@ export default function PostReelPage() {
           postResults.push({ pageId, success: true, postId: data.postId });
           setSuccessMessage(`Reel post created for page ${pageId}! Post ID: ${data.postId}`);
           setPublishedPageIds((prev) => [...prev, pageId]);
-          setPostedVideoId(data.postId); // Store the videoId for status checking
+          setPostedVideoId(data.postId ?? null); // Store the videoId for status checking
         } else {
           const msg = data?.message || `HTTP ${response.status}`;
           postResults.push({ pageId, success: false, message: msg });
