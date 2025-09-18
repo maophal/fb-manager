@@ -122,7 +122,7 @@ jobs:
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
-        key: ${{ steps.set_rollback_target.outputs.SSH_PRIVATE_KEY }}
+        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
           sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
