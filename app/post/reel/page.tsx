@@ -296,7 +296,7 @@ export default function PostReelPage() {
       // Clean up the processed video file on the server
       if (processedVideoFilePath) {
         try {
-          await fetch('/api/facebook/cleanup-video', {
+          await fetch('https://beyourhr.net/api/facebook/cleanup-video', { // Hardcoded domain as per user request
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -445,7 +445,7 @@ export default function PostReelPage() {
                 try {
                   const formData = new FormData();
                   formData.append('video', file);
-                  const response = await fetch('/api/facebook/process-video', {
+                  const response = await fetch('https://beyourhr.net/api/facebook/process-video', { // Hardcoded domain as per user request
                     method: 'POST',
                     body: formData,
                   });
@@ -531,7 +531,12 @@ export default function PostReelPage() {
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
             disabled={posting || !canSubmit} // Removed isCountingDown from disabled prop
           >
-            {isCountingDown ? (
+            {isProcessingVideo ? ( // New condition for video processing
+              <span className="flex items-center">
+                <Spinner className="h-5 w-5 mr-3 text-white animate-spin" />
+                Processing Video...
+              </span>
+            ) : isCountingDown ? (
               <span className="flex items-center">
                 <Spinner className="h-5 w-5 mr-3 text-white animate-spin" />
                 Waiting for next post... {countdown}s
