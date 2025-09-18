@@ -52,6 +52,8 @@ export default function PostReelPage() {
   // Reel specific states
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false); // New state for video processing
+  const [processedVideoFilePath, setProcessedVideoFilePath] = useState<string | null>(null); // New state for processed video path
 
   useEffect(() => {
     if (postOption === 'schedule' && datePickerRef.current) {
@@ -132,6 +134,7 @@ export default function PostReelPage() {
     setVideoFile(null);
     if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
     setVideoPreviewUrl(null);
+    setProcessedVideoFilePath(null); // Clear processed video path
   };
 
   const checkReelStatus = async (videoId: string, pageId: string) => {
@@ -158,6 +161,8 @@ export default function PostReelPage() {
 
   const canSubmit =
     !!videoFile &&
+    !isProcessingVideo && // Ensure video processing is complete
+    !!processedVideoFilePath && // Ensure processed video path exists
     selectedPageIds.length > 0 &&
     postCaption.trim().length > 0 &&
     (postOption === 'now' || (!!scheduledDate && scheduledDate > new Date()));
@@ -170,6 +175,14 @@ export default function PostReelPage() {
 
     if (!videoFile) {
       toast.error('Please select a video to upload.');
+      return;
+    }
+    if (isProcessingVideo) {
+      toast.error('Video is still being processed. Please wait.');
+      return;
+    }
+    if (!processedVideoFilePath) {
+      toast.error('Processed video path is missing. Please re-upload the video.');
       return;
     }
     if (selectedPageIds.length === 0) {
@@ -193,7 +206,7 @@ export default function PostReelPage() {
         const pageId = selectedPageIds[i];
 
         const formData = new FormData();
-        formData.append('video', videoFile); // <-- server expects 'video'
+        formData.append('processedVideoPath', processedVideoFilePath); // Use processed video path
         formData.append('pageId', pageId);   // <-- server expects 'pageId'
         formData.append('caption', postCaption); // <-- server expects 'caption'
         if (postOption === 'schedule' && scheduledDate) {
@@ -379,7 +392,36 @@ export default function PostReelPage() {
           </div>
 
           <VideoUploadProcessor
-            onVideoProcessed={setVideoFile}
+            onVideoProcessed={async (file) => {
+              setVideoFile(file);
+              if (file) {
+                setIsProcessingVideo(true);
+                setProcessedVideoFilePath(null); // Clear previous processed path
+                try {
+                  const formData = new FormData();
+                  formData.append('video', file);
+                  const response = await fetch('/api/facebook/process-video', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setProcessedVideoFilePath(data.processedVideoPath);
+                    toast.success('Video processed successfully!');
+                  } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to process video.');
+                  }
+                } catch (error: any) {
+                  toast.error(`Video processing failed: ${error.message}`);
+                  setVideoFile(null); // Clear the selected video if processing fails
+                  if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+                  setVideoPreviewUrl(null);
+                } finally {
+                  setIsProcessingVideo(false);
+                }
+              }
+            }}
             onRemoveVideo={handleRemoveVideo}
             videoFile={videoFile}
             videoPreviewUrl={videoPreviewUrl}

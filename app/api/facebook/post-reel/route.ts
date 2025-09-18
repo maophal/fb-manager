@@ -56,7 +56,34 @@ export async function POST(request: NextRequest) {
     client = await pool.connect();
     console.log('Database connected.');
 
-    console.log('--- Querying Page Access Token ---');
+    let client: PoolClient | null = null;
+
+  try {
+    const formData = await request.formData();
+    const processedVideoPath = formData.get('processedVideoPath') as string; // Expect processed video path
+    const pageId = formData.get('pageId') as string;
+    const caption = formData.get('caption') as string;
+    const scheduledPublishTime = formData.get('scheduledPublishTime') as string;
+
+    console.log('--- Received Reel Post Request ---');
+    console.log('Page ID:', pageId);
+    console.log('Caption:', caption);
+    console.log('Processed Video Path:', processedVideoPath);
+    console.log('Scheduled Publish Time:', scheduledPublishTime);
+
+    if (!processedVideoPath || !pageId) {
+      return NextResponse.json({ message: 'Missing processed video path or page ID.' }, { status: 400 });
+    }
+    if (!caption) {
+      console.error('Caption is missing for reel.');
+      return NextResponse.json({ message: 'Caption is required for reels.' }, { status: 400 });
+    }
+
+    console.log('--- Connecting to Database ---');
+    client = await pool.connect();
+    console.log('Database connected.');
+
+    console.log('--- Querying Page Access Token ---
     const result = await client.query(
       'SELECT page_access_token FROM facebook_pages WHERE page_id = $1',
       [pageId]
@@ -69,112 +96,8 @@ export async function POST(request: NextRequest) {
     const pageAccessToken = result.rows[0].page_access_token;
     console.log('Page Access Token retrieved (first 5 chars):', pageAccessToken.substring(0, 5) + '...');
 
-    // Save the original video file temporarily
-    const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
-    originalVideoPath = path.join('/tmp', `${Date.now()}-${videoFile.name}`);
-    await fs.writeFile(originalVideoPath, videoBuffer);
-    console.log('Original video saved to:', originalVideoPath);
-
-    if (!originalVideoPath) {
-      throw new Error('originalVideoPath is not defined');
-    }
-
-    // Get video metadata to determine cropping
-    const metadata = await new Promise<FfprobeData>((resolve, reject) => {
-      if (!originalVideoPath) {
-        return reject(new Error('originalVideoPath is not defined'));
-      }
-      ffmpeg.ffprobe(originalVideoPath, (err: Error, data: FfprobeData) => {
-        if (err) reject(err);
-        else resolve(data);
-      });
-    });
-
-    const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
-    if (!videoStream || typeof videoStream.width === 'undefined' || typeof videoStream.height === 'undefined') {
-      throw new Error('No video stream with dimensions found in the uploaded file.');
-    }
-
-    const originalWidth = videoStream.width;
-    const originalHeight = videoStream.height;
-    const targetAspectRatio = 9 / 16; // Facebook Reels aspect ratio
-
-    let cropFilter: string;
-    let outputWidth: number;
-    let outputHeight: number;
-
-    const currentAspectRatio = originalWidth / originalHeight;
-
-    if (currentAspectRatio > targetAspectRatio) {
-      // Video is wider than 9:16, crop horizontally (center crop)
-      outputHeight = originalHeight;
-      outputWidth = Math.round(originalHeight * targetAspectRatio);
-      const x = Math.round((originalWidth - outputWidth) / 2);
-      cropFilter = `${outputWidth}:${outputHeight}:${x}:0`;
-      console.log(`Cropping horizontally: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (x=${x})`);
-    } else if (currentAspectRatio < targetAspectRatio) {
-      // Video is taller than 9:16, crop vertically (center crop)
-      outputWidth = originalWidth;
-      outputHeight = Math.round(originalWidth / targetAspectRatio);
-      const y = Math.round((originalHeight - outputHeight) / 2);
-      cropFilter = `${outputWidth}:${outputHeight}:0:${y}`;
-      console.log(`Cropping vertically: ${originalWidth}x${originalHeight} -> ${outputWidth}x${outputHeight} (y=${y})`);
-    } else {
-      // Aspect ratio is already 9:16, no cropping needed
-      cropFilter = `${originalWidth}:${originalHeight}:0:0`; // No-op crop
-      outputWidth = originalWidth;
-      outputHeight = originalHeight;
-      console.log('Video aspect ratio is already 9:16, no cropping needed.');
-    }
-
-    croppedVideoPath = path.join('/tmp', `cropped-${Date.now()}-${videoFile.name}`);
-
-    if (!croppedVideoPath) {
-      throw new Error('croppedVideoPath is not defined');
-    }
-
-    const finalCroppedPath = croppedVideoPath;
-
-    await new Promise<void>((resolve, reject) => {
-      if (!originalVideoPath) {
-        return reject(new Error('originalVideoPath is not defined'));
-      }
-      ffmpeg(originalVideoPath)
-        .videoFilters(`crop=${cropFilter},scale=1080:1920`) // Apply crop then scale
-        .outputOptions([
-          '-c:v libx264', // H.264 codec
-          '-preset medium', // Encoding preset
-          '-crf 23', // Constant Rate Factor for quality
-          '-pix_fmt yuv420p', // Chroma subsampling 4:2:0
-          '-g 60', // Closed GOP (2 seconds at 30fps)
-          '-keyint_min 60', // Minimum keyframe interval
-          '-r 30', // Fixed frame rate (30 fps)
-          '-movflags +faststart', // Optimize for streaming
-          '-c:a aac', // AAC audio codec
-          '-b:a 128k', // Audio bitrate
-          '-ar 48000', // Audio sample rate 48kHz
-          '-ac 2', // Stereo audio channels
-          '-max_muxing_queue_size 1024' // Increase queue size
-        ])
-        .on('start', (commandLine) => {
-          console.log('Spawned FFmpeg with command:', commandLine);
-        })
-        .on('progress', (progress) => {
-          console.log('FFmpeg processing: ' + progress.percent + '% done');
-        })
-        .on('end', () => {
-          console.log('FFmpeg cropping finished.');
-          resolve();
-        })
-        .on('error', (err) => {
-          console.error('FFmpeg error:', err.message);
-          reject(new Error(`Video cropping failed: ${err.message}`));
-        })
-        .save(finalCroppedPath);
-    });
-
-    // Read the cropped video file for upload
-    const croppedVideoBuffer = await fs.readFile(croppedVideoPath);
+    // Read the processed video file for upload
+    const croppedVideoBuffer = await fs.readFile(processedVideoPath);
     const croppedFileSize = croppedVideoBuffer.length;
 
     const endpoint = 'video_reels';
