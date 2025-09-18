@@ -200,8 +200,24 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     console.error('--- Error Posting Reel to Facebook ---');
     console.error('Full error details:', err);
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
-    return NextResponse.json({ message }, { status: 500 });
+    let message = 'An unexpected error occurred during reel posting.';
+    let status = 500;
+
+    if (err instanceof Error) {
+      message = err.message;
+      // Check for specific error types if needed, e.g., database connection errors
+      if (message.includes('database') || message.includes('pool')) { // Simple check for database errors
+        message = 'Database error during reel posting: ' + message;
+        status = 500;
+      } else if (message.includes('file') || message.includes('ENOENT')) { // Simple check for file errors
+        message = 'File system error during reel posting: ' + message;
+        status = 500;
+      } else if (message.includes('fetch') || message.includes('network')) { // Simple check for network errors
+        message = 'Network error during reel posting: ' + message;
+        status = 500;
+      }
+    }
+    return NextResponse.json({ message }, { status });
   } finally {
     if (client) {
       client.release();

@@ -41,6 +41,7 @@ export default function PostReelPage() {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // New state for persistent error message
   const [postOption, setPostOption] = useState<'now' | 'schedule'>('now');
   const [publishedPageIds, setPublishedPageIds] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState<Date | null>(moment().add(10, 'minutes').toDate());
@@ -235,6 +236,7 @@ export default function PostReelPage() {
           const msg = data?.message || `HTTP ${response.status}`;
           postResults.push({ pageId, success: false, message: msg });
           toast.error(`Failed to create reel post for page ${pageId}: ${msg}`);
+          setErrorMessage(`Failed to post to ${pageId}: ${msg}`); // Set persistent error message
         }
 
         // Interval between pages
@@ -283,9 +285,10 @@ export default function PostReelPage() {
         toast.error('No reel posts were successful.');
       }
     } catch (err: unknown) {
-      let errorMessage = 'An unexpected error occurred during the posting process.';
-      if (err instanceof Error) errorMessage = err.message;
-      toast.error(errorMessage);
+      let msg = 'An unexpected error occurred during the posting process.';
+      if (err instanceof Error) msg = err.message;
+      toast.error(msg);
+      setErrorMessage(msg); // Set persistent error message
     } finally {
       setPosting(false);
       // console.log('Final post results:', postResults);
@@ -333,6 +336,7 @@ export default function PostReelPage() {
     );
   }
 
+  console.log('canSubmit:', canSubmit, 'videoFile:', !!videoFile, 'isProcessingVideo:', isProcessingVideo, 'processedVideoFilePath:', !!processedVideoFilePath, 'selectedPageIds.length:', selectedPageIds.length, 'postCaption.length:', postCaption.trim().length);
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl w-full bg-white rounded-xl shadow-lg p-6 sm:p-8">
@@ -356,6 +360,30 @@ export default function PostReelPage() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6 shadow-md"
+            role="alert"
+          >
+            <span className="block sm:inline font-medium">{errorMessage}</span>
+            <button
+              type="button"
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+              onClick={() => setErrorMessage(null)}
+            >
+              <svg
+                className="fill-current h-6 w-6 text-red-500"
+                role="button"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+              >
+                <title>Close</title>
+                <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+              </svg>
+            </button>
           </div>
         )}
 
@@ -413,6 +441,7 @@ export default function PostReelPage() {
               if (file) {
                 setIsProcessingVideo(true);
                 setProcessedVideoFilePath(null); // Clear previous processed path
+                console.log('Starting video processing...');
                 try {
                   const formData = new FormData();
                   formData.append('video', file);
@@ -424,6 +453,7 @@ export default function PostReelPage() {
                     const data = await response.json();
                     setProcessedVideoFilePath(data.processedVideoPath);
                     toast.success('Video processed successfully!');
+                    console.log('Video processed. processedVideoFilePath:', data.processedVideoPath);
                   } else {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to process video.');
@@ -437,8 +467,10 @@ export default function PostReelPage() {
                   setVideoFile(null); // Clear the selected video if processing fails
                   if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
                   setVideoPreviewUrl(null);
+                  console.error('Video processing failed:', errorMessage);
                 } finally {
                   setIsProcessingVideo(false);
+                  console.log('Video processing finished. isProcessingVideo:', false);
                 }
               }
             }}
@@ -497,7 +529,7 @@ export default function PostReelPage() {
           <button
             type="submit"
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
-            disabled={posting || isCountingDown || !canSubmit}
+            disabled={posting || !canSubmit} // Removed isCountingDown from disabled prop
           >
             {isCountingDown ? (
               <span className="flex items-center">
