@@ -49,6 +49,7 @@ export default function PostVideoPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [postType, setPostType] = useState<'video' | 'reel'>('video');
+  const [postedVideoId, setPostedVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (postOption === 'schedule' && datePickerRef.current) {
@@ -135,6 +136,28 @@ export default function PostVideoPage() {
     setVideoPreviewUrl(null);
   };
 
+  const checkVideoStatus = async (videoId: string, pageId: string) => {
+    toast.loading('Checking video status...');
+    try {
+      const response = await fetch(`/api/facebook/video-status?videoId=${videoId}&pageId=${pageId}`);
+      const data = await response.json();
+      toast.dismiss(); // Dismiss loading toast
+
+      if (response.ok) {
+        toast.success(`Video Status for ${videoId} on page ${pageId}: ${JSON.stringify(data.status)}`, { duration: 5000 });
+      } else {
+        toast.error(`Failed to get status for ${videoId} on page ${pageId}: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error: unknown) {
+      toast.dismiss(); // Dismiss loading toast
+      if (error instanceof Error) {
+        toast.error(`Error checking video status: ${error.message}`);
+      } else {
+        toast.error('An unknown error occurred while checking video status.');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccessMessage(null);
@@ -187,6 +210,7 @@ export default function PostVideoPage() {
             postResults.push({ pageId, success: true, postId: data.postId });
             setSuccessMessage(`Video post created for page ${pageId}! Post ID: ${data.postId}`);
             setPublishedPageIds((prev) => [...prev, pageId]);
+            setPostedVideoId(data.postId ?? null);
         } else {
             postResults.push({ pageId, success: false, message: data.message || 'Failed to create video post.' });
             toast.error(`Failed to create video post for page ${pageId}: ${data.message || 'Unknown error'}`);
@@ -277,6 +301,17 @@ export default function PostVideoPage() {
         {successMessage && (
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-6 shadow-md" role="alert">
             <span className="block sm:inline font-medium">{successMessage}</span>
+            {postedVideoId && selectedPageIds.length > 0 && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => checkVideoStatus(postedVideoId, selectedPageIds[0])} // Assuming checking status for the first selected page for simplicity
+                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Check Video Status
+                </button>
+              </div>
+            )}
           </div>
         )}
 
