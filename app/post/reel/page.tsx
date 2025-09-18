@@ -271,9 +271,7 @@ export default function PostReelPage() {
             ? `Successfully scheduled reel post to all ${successful} selected pages!`
             : `Successfully posted reel to all ${successful} selected pages!`
         );
-        setVideoFile(null);
-        if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-        setVideoPreviewUrl(null);
+        handleRemoveVideo(); // Call the consolidated removal function
         setPostCaption('');
       } else if (successful > 0 && failed > 0) {
         setSuccessMessage(
