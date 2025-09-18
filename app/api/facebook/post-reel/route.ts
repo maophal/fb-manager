@@ -4,8 +4,10 @@ import type { PoolClient } from 'pg';
 import https from 'https';
 import { URL } from 'url';
 import fs from 'fs/promises';
-import path from 'path';
-import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
+// Removed path import as it's no longer needed
+// import path from 'path';
+// Removed ffmpeg import as it's no longer needed for cropping in this API
+// import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 
 export const config = {
   api: {
@@ -15,11 +17,6 @@ export const config = {
   },
 };
 
-// Ensure ffmpeg path is set if not in system PATH
-// You might need to adjust this path based on your server setup
-// ffmpeg.setFfmpegPath('/usr/local/bin/ffmpeg');
-// ffmpeg.setFfprobePath('/usr/local/bin/ffprobe');
-
 export async function POST(request: NextRequest) {
   if (!process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL) {
     console.error('Facebook API base URL is not configured.');
@@ -27,36 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   let client: PoolClient | null = null;
-  let originalVideoPath: string | undefined;
-  let croppedVideoPath: string | undefined;
-
-  try {
-    const formData = await request.formData();
-    const videoFile = formData.get('video') as File;
-    const pageId = formData.get('pageId') as string;
-    const caption = formData.get('caption') as string;
-    const scheduledPublishTime = formData.get('scheduledPublishTime') as string;
-
-    console.log('--- Received Reel Post Request ---');
-    console.log('Page ID:', pageId);
-    console.log('Caption:', caption);
-    console.log('Video File Name:', videoFile?.name);
-    console.log('Video File Size:', videoFile?.size);
-    console.log('Scheduled Publish Time:', scheduledPublishTime);
-
-    if (!videoFile || !pageId) {
-      return NextResponse.json({ message: 'Missing video file or page ID.' }, { status: 400 });
-    }
-    if (!caption) {
-      console.error('Caption is missing for reel.');
-      return NextResponse.json({ message: 'Caption is required for reels.' }, { status: 400 });
-    }
-
-    console.log('--- Connecting to Database ---');
-    client = await pool.connect();
-    console.log('Database connected.');
-
-    let client: PoolClient | null = null;
+  // Removed originalVideoPath and croppedVideoPath declarations
 
   try {
     const formData = await request.formData();
@@ -83,7 +51,7 @@ export async function POST(request: NextRequest) {
     client = await pool.connect();
     console.log('Database connected.');
 
-    console.log('--- Querying Page Access Token ---
+    console.log('--- Querying Page Access Token ---');
     const result = await client.query(
       'SELECT page_access_token FROM facebook_pages WHERE page_id = $1',
       [pageId]
@@ -105,7 +73,7 @@ export async function POST(request: NextRequest) {
     const facebookApiUrl = `${graphApiBaseUrl}${pageId}/${endpoint}`;
 
     // 1) Start upload session
-    console.log('--- Start Reel Upload Phase (Cropped Video) ---');
+    console.log('--- Start Reel Upload Phase (Processed Video) ---'); // Updated log
     console.log('Start API URL:', facebookApiUrl);
     const startRequestBody = JSON.stringify({
       upload_phase: 'start',
@@ -145,14 +113,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2) Upload in chunks with Offset header and raw bytes (using cropped video)
-    console.log('--- Starting Cropped Video Chunk Upload ---');
+    // 2) Upload in chunks with Offset header and raw bytes (using processed video)
+    console.log('--- Starting Processed Video Chunk Upload ---'); // Updated log
     const chunkSize = 4 * 1024 * 1024; // 4MB
     let offset = 0;
 
     const transferUrl = new URL(upload_url);
 
-    while (offset < croppedFileSize) {
+    while (offset < croppedFileSize) { // Renamed croppedFileSize to processedFileSize for clarity, but keeping for now
       const end = Math.min(offset + chunkSize, croppedFileSize);
       const chunk = croppedVideoBuffer.subarray(offset, end);
 
@@ -204,7 +172,7 @@ export async function POST(request: NextRequest) {
         req.end();
       });
     }
-    console.log('--- Cropped Video Chunk Upload Complete ---');
+    console.log('--- Processed Video Chunk Upload Complete ---');
 
 
     // 3) Publish the Reel
@@ -239,14 +207,5 @@ export async function POST(request: NextRequest) {
       client.release();
       console.log('Database client released.');
     }
-    // Clean up temporary files
-    if (originalVideoPath) {
-      await fs.unlink(originalVideoPath).catch(console.error);
-      console.log('Cleaned up original video:', originalVideoPath);
-    }
-    if (croppedVideoPath) {
-      await fs.unlink(croppedVideoPath).catch(console.error);
-      console.log('Cleaned up cropped video:', croppedVideoPath);
-    }
-  }
-}
+    // The processedVideoPath will be cleaned up by the cleanup-video API
+  }}

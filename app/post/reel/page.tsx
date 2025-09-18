@@ -289,6 +289,22 @@ export default function PostReelPage() {
     } finally {
       setPosting(false);
       // console.log('Final post results:', postResults);
+
+      // Clean up the processed video file on the server
+      if (processedVideoFilePath) {
+        try {
+          await fetch('/api/facebook/cleanup-video', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filePath: processedVideoFilePath }),
+          });
+          console.log('Processed video file cleanup initiated.');
+        } catch (cleanupError) {
+          console.error('Failed to initiate processed video file cleanup:', cleanupError);
+        }
+      }
     }
   };
 
@@ -412,8 +428,12 @@ export default function PostReelPage() {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to process video.');
                   }
-                } catch (error: any) {
-                  toast.error(`Video processing failed: ${error.message}`);
+                } catch (error: unknown) { // Changed 'any' to 'unknown'
+                  let errorMessage = 'An unknown error occurred during video processing.';
+                  if (error instanceof Error) {
+                    errorMessage = error.message;
+                  }
+                  toast.error(`Video processing failed: ${errorMessage}`);
                   setVideoFile(null); // Clear the selected video if processing fails
                   if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
                   setVideoPreviewUrl(null);
