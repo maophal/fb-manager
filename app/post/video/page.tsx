@@ -13,6 +13,8 @@ import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
 import toast from 'react-hot-toast';
 
+import VideoUploadProcessor from '../../../components/VideoUploadProcessor';
+
 interface FacebookPage {
   id: number;
   page_id: string;
@@ -349,35 +351,13 @@ export default function PostVideoPage() {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="videoUpload" className="block text-sm font-medium text-gray-700 mb-2">Upload Video:</label>
-            <input
-              type="file"
-              id="videoUpload"
-              accept="video/*"
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              onChange={handleVideoFileChange}
-            />
-          </div>
-
-          {videoPreviewUrl && (
-            <div className="mt-4">
-              <p className="block text-sm font-medium text-gray-700 mb-2">Video Preview:</p>
-              <div className="relative">
-                <video src={videoPreviewUrl} controls className="w-full rounded-md shadow-md"></video>
-                <button
-                  type="button"
-                  onClick={handleRemoveVideo}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
-                  title="Remove video"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
+          <VideoUploadProcessor
+            onVideoProcessed={setVideoFile}
+            onRemoveVideo={handleRemoveVideo}
+            videoFile={videoFile}
+            videoPreviewUrl={videoPreviewUrl}
+            setVideoPreviewUrl={setVideoPreviewUrl}
+          />
 
           <div className="pb-4">
             <span className="block text-sm font-medium text-gray-700 mb-2">Publish Option:</span>
