@@ -22,6 +22,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }} # Default to 'staging' for push events
 
     steps:
     - name: Checkout code
