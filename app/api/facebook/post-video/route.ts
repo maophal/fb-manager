@@ -36,18 +36,30 @@ export async function POST(request: NextRequest) {
     const pageAccessToken = result.rows[0].page_access_token;
     const fileSize = videoFile.size;
 
-    const endpoint = 'videos';
+    const endpoint = 'video_reels';
     const graphApiBaseUrl = process.env.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL!;
     const facebookApiUrl = `${graphApiBaseUrl}${pageId}/${endpoint}`;
 
     // 1) Start upload session
+    const startRequestBody = JSON.stringify({
+      upload_phase: 'start',
+      access_token: pageAccessToken,
+      file_size: fileSize,
+    });
+
     const startRes = await fetch(
-      `${facebookApiUrl}?upload_phase=start&access_token=${encodeURIComponent(pageAccessToken)}&file_size=${fileSize}`,
-      { method: 'POST' }
+      facebookApiUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: startRequestBody,
+      }
     );
     const startData = await startRes.json();
     if (!startRes.ok) {
-      console.error('Facebook API error (start phase):', startData.error);
+      console.error('Facebook API error (start phase):', startData);
       return NextResponse.json(
         { message: startData?.error?.message || 'Failed to start video upload session.' },
         { status: 500 }
@@ -58,6 +70,7 @@ export async function POST(request: NextRequest) {
     const uploadSessionId = _sess || video_id;
 
     if (!upload_url) {
+      console.error('Missing upload_url from Facebook start response. Full response:', startData);
       return NextResponse.json(
         { message: 'Missing upload_url from Facebook start response.' },
         { status: 500 }
@@ -85,10 +98,11 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         agent,
         headers: {
-          Authorization: `Bearer ${pageAccessToken}`,
+          Authorization: `OAuth ${pageAccessToken}`,
           Offset: String(offset),
           'Content-Type': 'application/octet-stream',
           'Content-Length': String(chunk.length),
+          'file_size': String(fileSize),
           'Accept-Encoding': 'identity',
           Connection: 'close',
           'User-Agent': 'node-upload/1.0',
@@ -126,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3) Finish the upload session
-    let finishUrl = `${facebookApiUrl}?upload_phase=finish&access_token=${pageAccessToken}&upload_session_id=${uploadSessionId}`;
+    let finishUrl = `${facebookApiUrl}?upload_phase=finish&access_token=${pageAccessToken}&upload_session_id=${uploadSessionId}&video_id=${video_id}&video_state=PUBLISHED`;
     if (caption) {
       finishUrl += `&description=${encodeURIComponent(caption)}`;
     }
