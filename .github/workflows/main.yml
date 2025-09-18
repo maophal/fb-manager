@@ -113,7 +113,7 @@ jobs:
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
-        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+        key: ${{ github.event.inputs.environment == 'production' && secrets.PROD_SSH_PRIVATE_KEY || secrets.STAGING_SSH_PRIVATE_KEY }}
         source: "full-project.tar.gz"
         target: "${{ steps.set_target.outputs.PROJECT_DIR }}"
 
@@ -122,7 +122,7 @@ jobs:
       with:
         host: ${{ steps.set_target.outputs.SSH_HOST }}
         username: ${{ steps.set_target.outputs.SSH_USERNAME }}
-        key: ${{ steps.set_target.outputs.SSH_PRIVATE_KEY }}
+        key: ${{ steps.set_rollback_target.outputs.SSH_PRIVATE_KEY }}
         script: |
           sudo mkdir -p ${{ steps.set_target.outputs.PROJECT_DIR }}
           sudo chown -R ${{ steps.set_target.outputs.SSH_USERNAME }}:${{ steps.set_target.outputs.SSH_USERNAME }} ${{ steps.set_target.outputs.PROJECT_DIR }}
@@ -140,17 +140,15 @@ jobs:
 
           cd current
           echo "Creating .env.local file..."
-          cat << EOF > .env.local
-          PG_HOST=${{ secrets.PG_HOST }}
-          PG_PORT=${{ secrets.PG_PORT }}
-          PG_USER=${{ secrets.PG_USER }}
-          PG_PASSWORD=${{ secrets.PG_PASSWORD }}
-          PG_DATABASE=${{ secrets.PG_DATABASE }}
-          FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}
-          FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}
-          NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL }}
-          NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL }}
-          EOF
+          echo "PG_HOST=${{ secrets.PG_HOST }}" > .env.local
+          echo "PG_PORT=${{ secrets.PG_PORT }}" >> .env.local
+          echo "PG_USER=${{ secrets.PG_USER }}" >> .env.local
+          echo "PG_PASSWORD=${{ secrets.PG_PASSWORD }}" >> .env.local
+          echo "PG_DATABASE=${{ secrets.PG_DATABASE }}" >> .env.local
+          echo "FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}" >> .env.local
+          echo "FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}" >> .env.local
+          echo "NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_GRAPH_API_BASE_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL=${{ secrets.NEXT_PUBLIC_FACEBOOK_OAUTH_BASE_URL }}" >> .env.local
 
           echo "Installing dependencies..."
           npm install
@@ -192,7 +190,7 @@ jobs:
       with:
         host: ${{ steps.set_rollback_target.outputs.SSH_HOST }}
         username: ${{ steps.set_rollback_target.outputs.SSH_USERNAME }}
-        key: ${{ steps.set_rollback_target.outputs.SSH_PRIVATE_KEY }}
+        key: ${{ github.event.inputs.environment == 'production' && secrets.PROD_SSH_PRIVATE_KEY || secrets.STAGING_SSH_PRIVATE_KEY }}
         script: |
           cd ${{ steps.set_rollback_target.outputs.PROJECT_DIR }}
           ROLLBACK_VERSION="${{ github.event.inputs.rollback_version }}"
